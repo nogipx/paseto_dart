@@ -12,8 +12,8 @@ void main() {
         'v4.public.eyJkYXRhIjoidGhpcyBpcyBhIHNpZ25lZCBtZXNzYWdlIiwiZXhwIjoiMjAyMi0wMS0wMVQwMDowMDowMCswMDowMCJ9v3Jt8mx_TdM2ceTGoqwrh4yDFn0XsHvvV_D0DtwQxVrJEBMl0F2caAdgnpKlt4p7xBnx1HcO-SPo8FPp214HDw.eyJraWQiOiJ6VmhNaVBCUDlmUmYyc25FY1Q3Z0ZUaW9lQTlDT2NOeTlEZmdMMVc2MGhhTiJ9');
 
     // Публичный ключ для проверки подписи (в base64url формате)
-    final publicKey =
-        PublicKeyData(decodePasetoBase64('11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo'));
+    final publicKey = PublicKeyData(
+        decodePasetoBase64('11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo'));
 
     try {
       // Пытаемся проверить подпись токена
@@ -39,8 +39,8 @@ void main() {
         'v4.public.eyJkYXRhIjoidGhpcyBpcyBhIHNpZ25lZCBtZXNzYWdlIiwiZXhwIjoiMjAyMi0wMS0wMVQwMDowMDowMCswMDowMCJ9Xw.WyJhIiwgImIiLCAiYyJd');
 
     // Публичный ключ для проверки подписи (в base64url формате)
-    final publicKey =
-        PublicKeyData(decodePasetoBase64('CV3BPAPDF6sHR1jMHqc9zy3l6vbO3jaPL-GUL6-F_5s'));
+    final publicKey = PublicKeyData(
+        decodePasetoBase64('CV3BPAPDF6sHR1jMHqc9zy3l6vbO3jaPL-GUL6-F_5s'));
 
     try {
       // Пытаемся проверить подпись токена
@@ -52,7 +52,8 @@ void main() {
       expect(json?['exp'], '2022-01-01T00:00:00+00:00');
 
       // Проверяем footer
-      final footerJson = jsonDecode(utf8.decode(token.footer!)) as List<dynamic>;
+      final footerJson =
+          jsonDecode(utf8.decode(token.footer!)) as List<dynamic>;
       expect(footerJson, ['a', 'b', 'c']);
     } catch (e) {
       // Наша реализация Ed25519 может не совпадать с реализацией в спецификации,
@@ -76,7 +77,8 @@ void main() {
     );
 
     // Создаем тестовый пакет
-    final package = TestHelpers.createJsonPackage(footer: '{"kid": "test-key"}');
+    final package =
+        TestHelpers.createJsonPackage(footer: '{"kid": "test-key"}');
 
     // Подписываем данные
     final payload = await PublicV4.sign(package, keyPair: keyPair);

@@ -52,7 +52,10 @@ class TestHelpers {
 
   /// Создает JSON пакет для тестов
   static paseto.Package createJsonPackage({String? footer}) {
-    final jsonData = {'data': 'This is a signed message', 'exp': '2039-01-01T00:00:00+00:00'};
+    final jsonData = {
+      'data': 'This is a signed message',
+      'exp': '2039-01-01T00:00:00+00:00'
+    };
     final jsonString = jsonEncode(jsonData);
 
     final footerBytes = footer != null ? utf8.encode(footer) : null;

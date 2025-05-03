@@ -15,7 +15,8 @@ void main() {
       header: PublicV3.header,
       payload: PayloadPublic(
         message: List<int>.from([1, 2, 3, 4, 5]),
-        signature: List<int>.from([10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120]),
+        signature:
+            List<int>.from([10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120]),
       ),
       footer: null,
     );
@@ -35,6 +36,7 @@ void main() {
       errorThrown = true;
     }
 
-    expect(errorThrown, isTrue, reason: 'Ожидалась ошибка при проверке неправильной подписи');
+    expect(errorThrown, isTrue,
+        reason: 'Ожидалась ошибка при проверке неправильной подписи');
   });
 }

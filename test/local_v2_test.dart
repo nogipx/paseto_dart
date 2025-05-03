@@ -106,6 +106,7 @@ void main() {
       errorThrown = true;
     }
 
-    expect(errorThrown, isTrue, reason: 'Ожидалась ошибка при расшифровке с неправильным ключом');
+    expect(errorThrown, isTrue,
+        reason: 'Ожидалась ошибка при расшифровке с неправильным ключом');
   });
 }

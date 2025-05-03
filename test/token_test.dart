@@ -7,7 +7,8 @@ import 'test_helpers.dart';
 void main() {
   group('Token', () {
     test('fromString v2.local', () async {
-      const tokenString = 'v2.local.AAAAAAAAAAAAAAAAIHRlc3QA0lsIwWB8M_x3DYr6VOcXzRT8NP2QFzG'
+      const tokenString =
+          'v2.local.AAAAAAAAAAAAAAAAIHRlc3QA0lsIwWB8M_x3DYr6VOcXzRT8NP2QFzG'
           'vj8nEn3-FD-KVUUUZr9YGsVbBKaG0ctZNBB6IWp-1MGGOkHLJADCNQA';
       final token = await Token.fromString(tokenString);
       expect(token.header.version, Version.v2);
@@ -21,7 +22,8 @@ void main() {
     });
 
     test('fromString v2.public', () async {
-      const tokenString = 'v2.public.dGVzdAAAAAAAAAAAAAAAAAAAQWjBnZZ-JrTN-Hm6dTo9I8a-AVl-'
+      const tokenString =
+          'v2.public.dGVzdAAAAAAAAAAAAAAAAAAAQWjBnZZ-JrTN-Hm6dTo9I8a-AVl-'
           'KjfnRIiC4VryLFf8AiGypS1DjYgGwaDmNiOYtVeO9b1jzLAYtOlZz-KxAg';
       final token = await Token.fromString(tokenString);
       expect(token.header.version, Version.v2);
@@ -41,7 +43,8 @@ void main() {
 
       // Создаем ключи
       final secretKey = await TestHelpers.generateSecretKey(32);
-      final keyPair = await TestHelpers.generateKeyPair(TestKeyPairType.ecdsa384);
+      final keyPair =
+          await TestHelpers.generateKeyPair(TestKeyPairType.ecdsa384);
 
       // Создаем токены напрямую для тестирования
       final localToken = Token(
@@ -61,7 +64,8 @@ void main() {
         header: PublicV3.header,
         payload: PayloadPublic(
           message: List<int>.from([1, 2, 3, 4, 5]),
-          signature: List<int>.from([10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120]),
+          signature: List<int>.from(
+              [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120]),
         ),
         footer: null,
       );
@@ -86,8 +90,10 @@ void main() {
         publicErrorThrown = true;
       }
 
-      expect(localErrorThrown, isTrue, reason: 'Ожидалась ошибка при расшифровке неверного токена');
-      expect(publicErrorThrown, isTrue, reason: 'Ожидалась ошибка при проверке неверного токена');
+      expect(localErrorThrown, isTrue,
+          reason: 'Ожидалась ошибка при расшифровке неверного токена');
+      expect(publicErrorThrown, isTrue,
+          reason: 'Ожидалась ошибка при проверке неверного токена');
     });
 
     test('preAuthenticationEncoding', () {

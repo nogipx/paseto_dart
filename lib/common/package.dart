@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 Karim "nogipx" Mamatkazin <nogipx@gmail.com>
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -56,7 +60,8 @@ class Package extends Equatable {
     required SecretKeyData preNonce,
   }) async {
     final pc.HMac hmac = pc.HMac(pc.SHA384Digest(), 128);
-    hmac.init(pc.KeyParameter(Uint8List.fromList(await preNonce.extractBytes())));
+    hmac.init(
+        pc.KeyParameter(Uint8List.fromList(await preNonce.extractBytes())));
 
     hmac.update(Uint8List.fromList(content), 0, content.length);
     final footer = this.footer;

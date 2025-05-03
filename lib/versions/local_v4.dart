@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 Karim "nogipx" Mamatkazin <nogipx@gmail.com>
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:math' as math;
@@ -16,7 +20,8 @@ class LocalV4 {
     purpose: Purpose.local,
   );
   static const nonceLength = 32;
-  static const macLength = 32; // В v4 используется 32-байтовый MAC (BLAKE2b-256)
+  static const macLength =
+      32; // В v4 используется 32-байтовый MAC (BLAKE2b-256)
   static const encKeyLength = 32; // XChaCha20 ключ
   static const authKeyLength = 32; // BLAKE2b-MAC ключ
 
@@ -34,7 +39,8 @@ class LocalV4 {
     PasetoRegistryInitializer.initV4Local();
 
     // Проверка версии и purpose токена
-    if (token.header.version != Version.v4 || token.header.purpose != Purpose.local) {
+    if (token.header.version != Version.v4 ||
+        token.header.purpose != Purpose.local) {
       throw FormatException('Token format is incorrect: not a v4.local token');
     }
 
@@ -81,12 +87,15 @@ class LocalV4 {
 
     // Проверяем минимальную длину сообщения (должен быть как минимум один байт данных + MAC)
     if (secretBox.cipherText.length <= macLength) {
-      throw FormatException('Ciphertext too short: expected more than $macLength bytes');
+      throw FormatException(
+          'Ciphertext too short: expected more than $macLength bytes');
     }
 
     // Получаем шифротекст и MAC
-    final cipherText = secretBox.cipherText.sublist(0, secretBox.cipherText.length - macLength);
-    final providedMac = secretBox.cipherText.sublist(secretBox.cipherText.length - macLength);
+    final cipherText = secretBox.cipherText
+        .sublist(0, secretBox.cipherText.length - macLength);
+    final providedMac =
+        secretBox.cipherText.sublist(secretBox.cipherText.length - macLength);
 
     // Вычисляем MAC с использованием BLAKE2b
     final computedMac = _computeBlake2bMac(
@@ -97,7 +106,8 @@ class LocalV4 {
 
     // Сравниваем MAC в постоянном времени для предотвращения атак по времени
     if (!_constantTimeEquals(providedMac, computedMac)) {
-      throw SecretBoxAuthenticationError('Authentication failed: MAC verification failed');
+      throw SecretBoxAuthenticationError(
+          'Authentication failed: MAC verification failed');
     }
 
     // Расшифровываем данные с использованием XChaCha20
@@ -222,7 +232,8 @@ class LocalV4 {
     List<int> cipherText,
   ) {
     // Создаем BLAKE2b-256 MAC
-    final mac = pc.Mac('BLAKE2b/256')..init(pc.KeyParameter(Uint8List.fromList(authKey)));
+    final mac = pc.Mac('BLAKE2b/256')
+      ..init(pc.KeyParameter(Uint8List.fromList(authKey)));
 
     // Добавляем данные для аутентификации
     mac.update(Uint8List.fromList(aad), 0, aad.length);

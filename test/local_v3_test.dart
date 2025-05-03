@@ -53,7 +53,8 @@ void main() {
       final token = await Token.fromString(tokenString);
 
       // Предсказуемый ключ
-      const hexKey = '707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f';
+      const hexKey =
+          '707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f';
       final correctKey = TestHelpers.secretKeyFromHexString(hexKey);
 
       // Изменяем последний байт ключа - это должно вызвать ошибку
@@ -107,7 +108,8 @@ void main() {
           final tamperedToken = await Token.fromString(tamperedTokenString);
           await tamperedToken.decryptLocalMessage(secretKey: secretKey);
         },
-        throwsA(anyOf(isA<CryptographyException>(), isA<v3.SecretBoxAuthenticationError>())),
+        throwsA(anyOf(isA<CryptographyException>(),
+            isA<v3.SecretBoxAuthenticationError>())),
       );
     });
 
@@ -178,8 +180,9 @@ void main() {
 
       // Корректно обрабатываем потенциально пустой footer
       final footerBytes = decrypted.footer;
-      final decodedFooterContent =
-          footerBytes != null && footerBytes.isNotEmpty ? utf8.decode(footerBytes) : '';
+      final decodedFooterContent = footerBytes != null && footerBytes.isNotEmpty
+          ? utf8.decode(footerBytes)
+          : '';
 
       expect(decodedContent, equals(plaintext));
       expect(decodedFooterContent, equals(footer));
@@ -188,7 +191,8 @@ void main() {
     // Проверяем работу с implicit данными
     test('шифрование и расшифрование с implicit данными', () async {
       final secretKey = await TestHelpers.generateSecretKey(32);
-      final implicitData = utf8.encode('дополнительные данные не включаемые в токен');
+      final implicitData =
+          utf8.encode('дополнительные данные не включаемые в токен');
 
       // Данные для шифрования
       final plaintext = 'Сообщение с implicit данными';
@@ -230,7 +234,8 @@ void main() {
             secretKey: secretKey,
           );
         },
-        throwsA(anyOf(isA<CryptographyException>(), isA<v3.SecretBoxAuthenticationError>())),
+        throwsA(anyOf(isA<CryptographyException>(),
+            isA<v3.SecretBoxAuthenticationError>())),
       );
 
       // Попытка расшифровки с другими implicit данными должна вызвать ошибку
@@ -243,7 +248,8 @@ void main() {
             implicit: wrongImplicit,
           );
         },
-        throwsA(anyOf(isA<CryptographyException>(), isA<v3.SecretBoxAuthenticationError>())),
+        throwsA(anyOf(isA<CryptographyException>(),
+            isA<v3.SecretBoxAuthenticationError>())),
       );
     });
   });

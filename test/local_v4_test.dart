@@ -142,8 +142,10 @@ void main() {
     final secretKey = SecretKeyData(knownKey);
 
     // Создаем токен вручную с фиксированным nonce для совместимости
-    final message =
-        jsonEncode({'data': 'this is a signed message', 'exp': '2039-01-01T00:00:00+00:00'});
+    final message = jsonEncode({
+      'data': 'this is a signed message',
+      'exp': '2039-01-01T00:00:00+00:00'
+    });
 
     // Создаем пакет
     final package = TestHelpers.createTextPackage(message);

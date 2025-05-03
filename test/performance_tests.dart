@@ -6,7 +6,8 @@ import 'test_helpers.dart';
 
 void main() {
   group('Тесты производительности', () {
-    test('многократное шифрование/расшифрование токенов с одним ключом', () async {
+    test('многократное шифрование/расшифрование токенов с одним ключом',
+        () async {
       // Arrange
       final secretKey = await TestHelpers.generateSecretKey(32);
       const int iterations = 50; // Меньшее число для быстрых тестов
@@ -48,8 +49,10 @@ void main() {
       // Выводим результаты производительности
       print('Шифрование $iterations токенов: $encryptionTime мс');
       print('Расшифрование $iterations токенов: $decryptionTime мс');
-      print('Среднее время шифрования: ${encryptionTime / iterations} мс на токен');
-      print('Среднее время расшифрования: ${decryptionTime / iterations} мс на токен');
+      print(
+          'Среднее время шифрования: ${encryptionTime / iterations} мс на токен');
+      print(
+          'Среднее время расшифрования: ${decryptionTime / iterations} мс на токен');
     });
 
     test('шифрование больших данных', () async {
@@ -92,7 +95,8 @@ void main() {
             secretKey: secretKey,
           );
           final token = message.toToken;
-          final decrypted = await token.decryptLocalMessage(secretKey: secretKey);
+          final decrypted =
+              await token.decryptLocalMessage(secretKey: secretKey);
           return decrypted.stringContent == payload;
         }));
       }
@@ -102,7 +106,8 @@ void main() {
 
       // Assert
       expect(results.every((result) => result), isTrue);
-      print('Параллельное шифрование/расшифрование $parallelOperations операций: $elapsed мс');
+      print(
+          'Параллельное шифрование/расшифрование $parallelOperations операций: $elapsed мс');
       print('Среднее время: ${elapsed / parallelOperations} мс на операцию');
     });
 

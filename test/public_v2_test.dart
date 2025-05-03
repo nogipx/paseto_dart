@@ -10,7 +10,8 @@ void main() {
       decodePasetoBase64('Xq649QQaRMADs0XOWSuWj80ZHN4uqN7PfZuQ9NoqjBs'),
       type: TestKeyPairType.ed25519,
     );
-    const tokenString = 'v2.public.dGVzdDUInakrW3fJBz_DRfy_IrgUj2UORbb72EJ0Z-tufH0ZSUMCtij5-'
+    const tokenString =
+        'v2.public.dGVzdDUInakrW3fJBz_DRfy_IrgUj2UORbb72EJ0Z-tufH0ZSUMCtij5-'
         'VsgbqoBzuNOpni5-J5CBHcVNTKVHzM79Ao';
     final token = await Token.fromString(tokenString);
     final message = await token.verifyPublicMessage(publicKey: publicKey);
@@ -82,7 +83,8 @@ void main() {
       ),
       type: TestKeyPairType.ed25519,
     );
-    final token = await Token.fromString('v2.public.eyJkYXRhIjoidGhpcyBpcyBhIHNpZ25lZCBtZXNzYWdlIi'
+    final token = await Token.fromString(
+        'v2.public.eyJkYXRhIjoidGhpcyBpcyBhIHNpZ25lZCBtZXNzYWdlIi'
         'wiZXhwIjoiMjAxOS0wMS0wMVQwMDowMDowMCswMDowMCJ9flsZsx_gYC'
         'R0N_Ec2QxJFFpvQAs7h9HtKwbVK2n1MJ3Rz-hwe8KUqjnd8FAnIJZ601'
         'tp7lGkguU63oGbomhoBw.eyJraWQiOiJ6VmhNaVBCUDlmUmYyc25FY1Q'

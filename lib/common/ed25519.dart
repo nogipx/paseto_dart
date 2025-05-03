@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 Karim "nogipx" Mamatkazin <nogipx@gmail.com>
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 import 'dart:typed_data';
 
 import 'package:ed25519_edwards/ed25519_edwards.dart' as ed;
@@ -54,7 +58,8 @@ class Ed25519 {
       final publicKeyBytes = await keyPair.publicKey.bytes;
       fullPrivateKeyBytes = [...privateKeyBytes, ...publicKeyBytes];
     } else {
-      throw ArgumentError('Invalid private key length: expected $privateKeySize bytes or 64 bytes');
+      throw ArgumentError(
+          'Invalid private key length: expected $privateKeySize bytes or 64 bytes');
     }
 
     // Преобразуем данные в нужный формат
@@ -80,11 +85,13 @@ class Ed25519 {
     final publicKeyBytes = await signature.publicKey.bytes;
 
     if (publicKeyBytes.length != publicKeySize) {
-      throw ArgumentError('Invalid public key length: expected $publicKeySize bytes');
+      throw ArgumentError(
+          'Invalid public key length: expected $publicKeySize bytes');
     }
 
     if (signature.bytes.length != signatureSize) {
-      throw ArgumentError('Invalid signature length: expected $signatureSize bytes');
+      throw ArgumentError(
+          'Invalid signature length: expected $signatureSize bytes');
     }
 
     // Преобразуем данные в нужный формат

@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 Karim "nogipx" Mamatkazin <nogipx@gmail.com>
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 import 'package:meta/meta.dart';
 import 'package:paseto_dart/paseto_dart.dart';
 
@@ -21,7 +25,8 @@ class LocalV2 {
     PasetoRegistryInitializer.initV2Local();
 
     // Проверка версии и purpose токена
-    if (token.header.version != Version.v2 || token.header.purpose != Purpose.local) {
+    if (token.header.version != Version.v2 ||
+        token.header.purpose != Purpose.local) {
       throw FormatException('Token format is incorrect: not a v2.local token');
     }
 
@@ -41,7 +46,8 @@ class LocalV2 {
 
     // В v2 используется XChaCha20-Poly1305 с nonce длиной 24 байта
     if (nonce.bytes.length != nonceLength) {
-      throw FormatException('Invalid nonce length for XChaCha20: expected 24 bytes');
+      throw FormatException(
+          'Invalid nonce length for XChaCha20: expected 24 bytes');
     }
 
     // Используем класс XChaCha20Poly1305 для расшифровки
@@ -50,9 +56,11 @@ class LocalV2 {
     // Расшифровываем данные
     final decrypted = await cipher.decrypt(
       SecretBox(
-        secretBox.cipherText.sublist(0, secretBox.cipherText.length - macLength),
+        secretBox.cipherText
+            .sublist(0, secretBox.cipherText.length - macLength),
         nonce: nonce.bytes,
-        mac: MacWrapper(secretBox.cipherText.sublist(secretBox.cipherText.length - macLength)),
+        mac: MacWrapper(secretBox.cipherText
+            .sublist(secretBox.cipherText.length - macLength)),
       ),
       aad: aad,
       secretKey: secretKey,

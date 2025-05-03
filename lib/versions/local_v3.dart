@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 Karim "nogipx" Mamatkazin <nogipx@gmail.com>
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -35,7 +39,8 @@ class LocalV3 {
     PasetoRegistryInitializer.initV3Local();
 
     // Проверка версии и purpose токена
-    if (token.header.version != Version.v3 || token.header.purpose != Purpose.local) {
+    if (token.header.version != Version.v3 ||
+        token.header.purpose != Purpose.local) {
       throw FormatException('Token format is incorrect: not a v3.local token');
     }
 
@@ -55,11 +60,13 @@ class LocalV3 {
 
     // Проверяем длину nonce
     if (nonce.bytes.length != nonceLength) {
-      throw FormatException('Invalid nonce length: expected $nonceLength bytes');
+      throw FormatException(
+          'Invalid nonce length: expected $nonceLength bytes');
     }
 
     // Выводим ключи шифрования с использованием HKDF
-    final keys = await _deriveKeys(secretKeyBytes, nonce.bytes, implicit: implicit ?? []);
+    final keys = await _deriveKeys(secretKeyBytes, nonce.bytes,
+        implicit: implicit ?? []);
 
     // Получаем AAD для проверки целостности
     final aad = Token.preAuthenticationEncoding(
@@ -73,8 +80,10 @@ class LocalV3 {
     );
 
     // Шифротекст и MAC хранятся в secretBox.cipherText
-    final cipherText = secretBox.cipherText.sublist(0, secretBox.cipherText.length - macLength);
-    final macBytes = secretBox.cipherText.sublist(secretBox.cipherText.length - macLength);
+    final cipherText = secretBox.cipherText
+        .sublist(0, secretBox.cipherText.length - macLength);
+    final macBytes =
+        secretBox.cipherText.sublist(secretBox.cipherText.length - macLength);
 
     // Проверяем MAC с использованием HMAC-SHA-384
     final computedMac = _computeHmacSha384(
@@ -85,14 +94,16 @@ class LocalV3 {
 
     // Сравниваем MAC в постоянном времени
     if (!_constantTimeEquals(macBytes, computedMac)) {
-      throw SecretBoxAuthenticationError('Authentication failed: MAC verification failed');
+      throw SecretBoxAuthenticationError(
+          'Authentication failed: MAC verification failed');
     }
 
     // Используем AES-256-CTR для расшифровки
     final decrypted = _decryptWithAesCtr(
       cipherText,
       keys.encKey,
-      nonce.bytes.sublist(0, 16), // Используем первые 16 байт nonce как IV для AES-CTR
+      nonce.bytes
+          .sublist(0, 16), // Используем первые 16 байт nonce как IV для AES-CTR
     );
 
     // Возвращаем расшифрованное сообщение
@@ -130,13 +141,15 @@ class LocalV3 {
     );
 
     // Выводим ключи шифрования
-    final keys = await _deriveKeys(secretKeyBytes, nonceBytes, implicit: implicit ?? []);
+    final keys =
+        await _deriveKeys(secretKeyBytes, nonceBytes, implicit: implicit ?? []);
 
     // Шифруем данные с использованием AES-256-CTR
     final cipherText = _encryptWithAesCtr(
       package.content,
       keys.encKey,
-      nonceBytes.sublist(0, 16), // Используем первые 16 байт nonce как IV для AES-CTR
+      nonceBytes.sublist(
+          0, 16), // Используем первые 16 байт nonce как IV для AES-CTR
     );
 
     // Вычисляем HMAC-SHA-384 для проверки целостности
@@ -337,7 +350,9 @@ class LocalV3 {
       final stepResult = Uint8List(hmac.macSize);
       hmac.doFinal(stepResult, 0);
 
-      final bytesToCopy = remainingBytes < stepResult.length ? remainingBytes : stepResult.length;
+      final bytesToCopy = remainingBytes < stepResult.length
+          ? remainingBytes
+          : stepResult.length;
       result.setRange(outputOffset, outputOffset + bytesToCopy, stepResult);
 
       prev = stepResult;

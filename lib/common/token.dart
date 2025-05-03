@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 Karim "nogipx" Mamatkazin <nogipx@gmail.com>
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -165,7 +169,8 @@ class Token extends Equatable {
 
     // Проверяем минимальную длину payload
     if (bytes.length < nonceLength) {
-      throw FormatException('Invalid token payload length for ${version.name}.local');
+      throw FormatException(
+          'Invalid token payload length for ${version.name}.local');
     }
 
     // Извлекаем nonce
@@ -208,7 +213,8 @@ class Token extends Equatable {
 
     // Проверяем минимальную длину payload
     if (bytes.length < signatureLength) {
-      throw FormatException('Invalid token payload length for ${version.name}.public');
+      throw FormatException(
+          'Invalid token payload length for ${version.name}.public');
     }
 
     // Извлекаем сообщение (оно идет в начале payload) и подпись (она идет в конце)
@@ -226,7 +232,9 @@ class Token extends Equatable {
       header: header,
       payload: payload,
       footer: footer,
-      implicit: header.version == Version.v4 || header.version == Version.v3 ? [] : null,
+      implicit: header.version == Version.v4 || header.version == Version.v3
+          ? []
+          : null,
     );
   }
 
@@ -242,7 +250,9 @@ class Token extends Equatable {
         nonce: nonce,
       ),
       footer: footer,
-      implicit: header.version == Version.v4 || header.version == Version.v3 ? [] : null,
+      implicit: header.version == Version.v4 || header.version == Version.v3
+          ? []
+          : null,
     );
   }
 
@@ -284,7 +294,9 @@ class Token extends Equatable {
           components.fold(
             Uint8List.fromList(<int>[]),
             (previousValue, element) =>
-                previousValue + _componentLengthToByteData(element.length) + element,
+                previousValue +
+                _componentLengthToByteData(element.length) +
+                element,
           ),
     );
   }

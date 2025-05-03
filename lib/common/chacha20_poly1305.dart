@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 Karim "nogipx" Mamatkazin <nogipx@gmail.com>
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 import 'dart:math' as dart_math;
 import 'dart:typed_data';
 
@@ -49,11 +53,13 @@ class XChaCha20Poly1305 {
 
     // Проверяем размеры ключа и nonce
     if (keyBytes.length != 32) {
-      throw ArgumentError('Secret key must be 32 bytes (256 bits) for XChaCha20-Poly1305');
+      throw ArgumentError(
+          'Secret key must be 32 bytes (256 bits) for XChaCha20-Poly1305');
     }
 
     if (nonce.length != nonceSize) {
-      throw ArgumentError('Nonce must be $nonceSize bytes for XChaCha20-Poly1305');
+      throw ArgumentError(
+          'Nonce must be $nonceSize bytes for XChaCha20-Poly1305');
     }
 
     // Выводим подключи для ChaCha20 и Poly1305
@@ -104,11 +110,13 @@ class XChaCha20Poly1305 {
 
     // Проверяем размеры ключа и nonce
     if (keyBytes.length != 32) {
-      throw ArgumentError('Secret key must be 32 bytes (256 bits) for XChaCha20-Poly1305');
+      throw ArgumentError(
+          'Secret key must be 32 bytes (256 bits) for XChaCha20-Poly1305');
     }
 
     if (nonce.length != nonceSize) {
-      throw ArgumentError('Nonce must be $nonceSize bytes for XChaCha20-Poly1305');
+      throw ArgumentError(
+          'Nonce must be $nonceSize bytes for XChaCha20-Poly1305');
     }
 
     // Выводим подключи для ChaCha20 и Poly1305
@@ -123,7 +131,8 @@ class XChaCha20Poly1305 {
 
     // Проверка MAC
     if (!_constantTimeEquals(macBytes, expectedMac)) {
-      throw SecretBoxAuthenticationError('Authentication failed: MAC verification failed');
+      throw SecretBoxAuthenticationError(
+          'Authentication failed: MAC verification failed');
     }
 
     // Расшифровываем данные
@@ -147,7 +156,8 @@ class XChaCha20Poly1305 {
   }
 
   /// Выводит подключи для ChaCha20 и Poly1305
-  _XChaCha20Poly1305Subkeys _deriveSubkeys(List<int> keyBytes, List<int> nonce) {
+  _XChaCha20Poly1305Subkeys _deriveSubkeys(
+      List<int> keyBytes, List<int> nonce) {
     // Для XChaCha20-Poly1305 используем Poly1305 Key Derivation согласно спецификации
     // 1. Создаем HChaCha20 для получения подключа
     final hChaChaKey = _deriveHChaChaKey(keyBytes, nonce.sublist(0, 16));
@@ -155,7 +165,8 @@ class XChaCha20Poly1305 {
     // 2. Создаем ChaCha20 для получения одноразового ключа Poly1305
     final chacha = pc.StreamCipher('ChaCha7539');
     final subNonce = Uint8List(12); // Используем 12-байтовый nonce для ChaCha20
-    subNonce.setAll(4, nonce.sublist(16, 24)); // Добавляем оставшиеся байты nonce
+    subNonce.setAll(
+        4, nonce.sublist(16, 24)); // Добавляем оставшиеся байты nonce
 
     final keyParam = pc.KeyParameter(Uint8List.fromList(hChaChaKey));
     final params = pc.ParametersWithIV(keyParam, subNonce);

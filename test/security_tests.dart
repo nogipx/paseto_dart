@@ -25,7 +25,8 @@ void main() {
       final tokenString = token.toTokenString;
 
       // Портим последний символ токена (где должен быть MAC)
-      final corruptedToken = '${tokenString.substring(0, tokenString.length - 1)}X';
+      final corruptedToken =
+          '${tokenString.substring(0, tokenString.length - 1)}X';
 
       // Act & Assert
       bool exceptionWasThrown = false;
@@ -37,7 +38,8 @@ void main() {
         // Проверяем, что сообщение ошибки содержит ожидаемый текст
         expect(e.toString().contains('Authentication failed'), isTrue);
       }
-      expect(exceptionWasThrown, isTrue, reason: 'Должна быть выброшена ошибка аутентификации');
+      expect(exceptionWasThrown, isTrue,
+          reason: 'Должна быть выброшена ошибка аутентификации');
     });
 
     test('проверка защиты от подмены версий', () async {
@@ -56,7 +58,8 @@ void main() {
       // поэтому создадим новый токен с тем же содержимым
       expect(() async {
         // Вместо попытки изменить заголовок, пытаемся расшифровать v4 токен средствами v2
-        await Token.fromString(v4Token.toTokenString.replaceAll('v4.local', 'v2.local'))
+        await Token.fromString(
+                v4Token.toTokenString.replaceAll('v4.local', 'v2.local'))
             .then((token) => token.decryptLocalMessage(secretKey: secretKey));
       }, throwsA(anything));
     });
@@ -99,7 +102,8 @@ void main() {
 
       // Модифицируем сам строковый токен, чтобы избежать проблем с типами
       final validTokenString = validToken.toTokenString;
-      final corruptedTokenString = '${validTokenString.substring(0, validTokenString.length - 1)}X';
+      final corruptedTokenString =
+          '${validTokenString.substring(0, validTokenString.length - 1)}X';
 
       // Act - запускаем проверку
       bool failureDetected = false;
@@ -113,7 +117,8 @@ void main() {
       }
 
       // Assert
-      expect(failureDetected, isTrue, reason: 'Токен с поврежденным MAC должен выдавать ошибку');
+      expect(failureDetected, isTrue,
+          reason: 'Токен с поврежденным MAC должен выдавать ошибку');
 
       // Примечание: тест на постоянное время сложно реализовать надежно,
       // так как на время выполнения влияет множество факторов. Реальный тест должен
@@ -161,8 +166,10 @@ void main() {
       final secretKey = SecretKeyData(knownKey);
 
       // Создаем ожидаемый payload
-      final expectedPayload =
-          jsonEncode({'data': 'this is a signed message', 'exp': '2039-01-01T00:00:00+00:00'});
+      final expectedPayload = jsonEncode({
+        'data': 'this is a signed message',
+        'exp': '2039-01-01T00:00:00+00:00'
+      });
 
       // Act
       final message = await Message.encryptString(
@@ -240,17 +247,20 @@ void main() {
 
       // Act & Assert
       // v2 токен с v2 шифрованием должен работать
-      final decryptedV2 = await v2Token.decryptLocalMessage(secretKey: secretKey);
+      final decryptedV2 =
+          await v2Token.decryptLocalMessage(secretKey: secretKey);
       expect(decryptedV2.stringContent, equals('v2 сообщение'));
 
       // v4 токен с v4 шифрованием должен работать
-      final decryptedV4 = await v4Token.decryptLocalMessage(secretKey: secretKey);
+      final decryptedV4 =
+          await v4Token.decryptLocalMessage(secretKey: secretKey);
       expect(decryptedV4.stringContent, equals('v4 сообщение'));
 
       // Пытаемся использовать v2 шифрование для v4 токена
       expect(() async {
         // Создаем новый токен, пытаясь выдать v4 за v2
-        final hackedTokenString = v4Token.toTokenString.replaceAll('v4.local', 'v2.local');
+        final hackedTokenString =
+            v4Token.toTokenString.replaceAll('v4.local', 'v2.local');
         final hackedToken = await Token.fromString(hackedTokenString);
         await hackedToken.decryptLocalMessage(secretKey: secretKey);
       }, throwsA(anything));

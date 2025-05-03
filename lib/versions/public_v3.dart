@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 Karim "nogipx" Mamatkazin <nogipx@gmail.com>
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
@@ -38,14 +42,15 @@ class Ecdsa {
     final signer = pc.Signer("ECDSA/${_digest.algorithmName}");
 
     // Подготавливаем приватный ключ
-    final privParams = pc.PrivateKeyParameter(
-        pc.ECPrivateKey(_bytesToBigInt(privateKeyBytes), pc.ECDomainParameters(_curve)));
+    final privParams = pc.PrivateKeyParameter(pc.ECPrivateKey(
+        _bytesToBigInt(privateKeyBytes), pc.ECDomainParameters(_curve)));
 
     // Инициализируем подписывающий алгоритм для подписи
     signer.init(true, privParams);
 
     // Подписываем данные
-    final signature = signer.generateSignature(Uint8List.fromList(data)) as pc.ECSignature;
+    final signature =
+        signer.generateSignature(Uint8List.fromList(data)) as pc.ECSignature;
 
     // Преобразуем подпись в формат r || s
     final r = _bigIntToBytes(signature.r, 48); // 48 байт для P-384
@@ -81,7 +86,8 @@ class Ecdsa {
     // Примечание: в реальном коде нужно правильно преобразовать байты публичного ключа в ECPoint
     // Это упрощенная версия для демонстрации
     final pubParams = pc.PublicKeyParameter(pc.ECPublicKey(
-        _createECPoint(await signature.publicKey.bytes), pc.ECDomainParameters(_curve)));
+        _createECPoint(await signature.publicKey.bytes),
+        pc.ECDomainParameters(_curve)));
 
     // Инициализируем проверяющий алгоритм
     verifier.init(false, pubParams);
@@ -92,7 +98,9 @@ class Ecdsa {
 
   // Вспомогательные методы
   BigInt _bytesToBigInt(List<int> bytes) {
-    return BigInt.parse(bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(), radix: 16);
+    return BigInt.parse(
+        bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(),
+        radix: 16);
   }
 
   List<int> _bigIntToBytes(BigInt value, int length) {
