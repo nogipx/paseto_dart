@@ -4,9 +4,10 @@
 
 library;
 
-export 'utils/_index.dart';
-export 'models/_index.dart';
 export 'blake2/_index.dart';
+export 'chacha20/_index.dart';
+export 'models/_index.dart';
+export 'utils/_index.dart';
 
 // Version implementations
 export 'versions/local_v4.dart' show LocalV4;

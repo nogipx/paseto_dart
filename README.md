@@ -1,231 +1,146 @@
 # paseto_dart
 
-Dart unofficial implementation of [PASETO](https://paseto.io) (Platform-Agnostic Security Tokens) — a modern cryptographically secure alternative to JWT.
+Dart неофициальная реализация [PASETO](https://paseto.io) (Platform-Agnostic Security Tokens) — современная криптографически защищенная альтернатива JWT.
 
 > [!WARNING]
-> The [PASETO RFC](https://github.com/paseto-standard/paseto-rfc) is not yet approved, so the implementation may change in the future.
+> Библиотека находится в стадии разработки и может содержать ошибки. Используйте на свой страх и риск.
 
-## What is PASETO
+## Что такое PASETO
 
-PASETO is a protocol for creating secure access tokens, developed in 2018 as an alternative to JWT/JOSE, addressing its major security flaws:
+PASETO — это протокол для создания безопасных токенов доступа, разработанный в 2018 году как альтернатива JWT/JOSE, устраняющий его основные недостатки безопасности:
 
-- **Fixed set of algorithms** in each version — eliminates vulnerabilities related to algorithm selection
-- **Strict separation of modes** into `local` (encryption) and `public` (signing) — prevents confusion
-- **Strict format specification** — minimizes implementation errors
-- **Modern cryptography** — uses ChaCha20-Poly1305, Ed25519, ECDSA, and other proven algorithms
+- **Фиксированный набор алгоритмов** в каждой версии — устраняет уязвимости, связанные с выбором алгоритма
+- **Строгое разделение режимов** на `local` (шифрование) и `public` (подпись) — предотвращает путаницу
+- **Строгая спецификация формата** — минимизирует ошибки реализации
+- **Современная криптография** — использует XChaCha20 и BLAKE2b
 
-## 🚀 Installation
+## 🚀 Установка
 
 ```yaml
 dependencies:
   paseto_dart: ^1.0.0
 ```
 
-## 📋 Supported PASETO Versions
+## 📋 Поддерживаемые версии PASETO
 
 > [!NOTE]
-> Please note that the v2 token type standard is expected to be deprecated in 2022, so new development should be done ideally on versions 3 or 4.
+> Данная библиотека поддерживает только PASETO v4, который является рекомендуемым для новых проектов.
 
-| Version | Support | Description |
-|---------|---------|-------------|
-| v1      | ❌      | Legacy (RSA + AES-CTR) - not supported |
-| v2      | ✅      | General purpose (NaCl/libsodium) |
-| v3      | ✅      | NIST-compliant |
-| v4      | ✅      | Modern (recommended) |
-| PASERK  | ❌      | PASETO key representation format |
+| Версия  | Поддержка | Описание |
+|---------|-----------|----------|
+| v1      | ❌        | Legacy (RSA + AES-CTR) - не поддерживается |
+| v2      | ❌        | General purpose (NaCl/libsodium) - не поддерживается |
+| v3      | ❌        | NIST-compliant - не поддерживается |
+| v4      | ✅        | Modern (рекомендуется) |
+| PASERK  | ❌        | PASETO формат представления ключей - не поддерживается |
 
-## 🔐 Quick Start
+## 🔐 Быстрый старт
 
-### Creating and Verifying a Signed Token (public):
+Примеры использования библиотеки можно найти в [example](example).
 
-```dart
-import 'dart:convert';
-import 'package:paseto_dart/paseto_dart.dart';
+## 📚 Руководство по выбору типа токена
 
-// Creating keys
-final keyPair = await Ed25519().newKeyPair();
+| Тип токена | Когда использовать | Преимущества |
+|------------|-------------------|--------------|
+| **local**  | - Защита чувствительных данных<br> - Хранение секретов | - Данные зашифрованы<br> - Доступны только с ключом |
+| **public** | - Авторизация<br> - Аутентификация | - Проверка без секретного ключа<br> - Совместим с подходом JWT |
 
-// Creating a token with data (e.g., for authorization)
-final userData = {
-  'sub': 'user123',
-  'name': 'John Doe',
-  'exp': DateTime.now().add(Duration(hours: 1)).millisecondsSinceEpoch ~/ 1000
-};
+## 🔑 Лучшие практики
 
-// Signing the token
-final message = await Message.signString(
-  jsonEncode(userData),
-  version: Version.v4,
-  keyPair: keyPair,
-);
-final token = message.toToken.toTokenString;
+1. **Включайте срок действия** (`exp`) в токены авторизации
+2. **Всегда проверяйте версию токена** перед использованием
+3. **Храните ключи в безопасности**
+4. **Для токенов авторизации** используйте режим `public`
+5. **Для защиты данных** используйте режим `local`
 
-// Verifying and reading the token
-final receivedToken = await Token.fromString(token);
-final verifiedMessage = await receivedToken.verifyPublicMessage(
-  publicKey: keyPair.publicKey
-);
-final payload = jsonDecode(verifiedMessage.stringContent!);
-print('User ID: ${payload['sub']}');
-```
+## ⚠️ Правильная реализация авторизации
 
-### Encrypting and Decrypting Data (local):
+> **Важно!** Токены PASETO не предназначены для повторного использования в качестве долгосрочных токенов доступа.
+
+PASETO не имеет встроенной защиты от атак повторного воспроизведения (повторное использование токена). Если токен перехвачен, злоумышленник может использовать его до истечения срока действия.
+
+### Рекомендуемая архитектура авторизации
+
+1. **Используйте двухуровневую систему токенов**:
+   - Краткосрочные токены доступа PASETO (5-15 минут)
+   - Долгосрочные токены обновления (хранятся в базе данных сервера)
 
 ```dart
-import 'dart:convert';
-import 'dart:math';
-import 'package:paseto_dart/paseto_dart.dart';
-
-// Creating a secret key
-final random = Random.secure();
-final secretKey = SecretKeyData(
-  List<int>.generate(32, (_) => random.nextInt(256))
-);
-
-// Encrypting data
-final sensitiveData = {'secret': 'Confidential information'};
-final encrypted = await Message.encryptString(
-  jsonEncode(sensitiveData),
-  version: Version.v4,
-  secretKey: secretKey,
-);
-final encryptedToken = encrypted.toToken.toTokenString;
-
-// Decrypting data
-final receivedToken = await Token.fromString(encryptedToken);
-final decrypted = await receivedToken.decryptLocalMessage(secretKey: secretKey);
-final decryptedData = jsonDecode(decrypted.stringContent!);
-print('Secret: ${decryptedData['secret']}');
-```
-
-## 📚 Selection Guide
-
-| Token Type | When to Use | Advantages |
-|------------|-------------|------------|
-| **local**  | - Protecting sensitive data<br> - Storing secrets | - Data is encrypted<br> - Only accessible with the key |
-| **public** | - Authorization<br> - Authentication | - Authentication without the secret key<br> - Compatible with JWT approach |
-
-## 🔑 Best Practices
-
-1. **Use v4** for new projects
-2. **Include expiration time** (`exp`) in authorization tokens
-3. **Always verify the token version** before use
-4. **Store keys securely**
-5. **For authorization tokens** use `public` mode
-6. **For data protection** use `local` mode
-
-## ⚠️ Proper Authorization Implementation
-
-> **Important!** PASETO tokens are not designed for reuse as long-term access tokens.
-
-PASETO does not have built-in protection against replay attacks (token reuse). If a token is intercepted, an attacker can use it until it expires.
-
-### Recommended Authorization Architecture
-
-1. **Use a two-tier token system**:
-   - Short-lived PASETO access tokens (5-15 minutes)
-   - Long-lived refresh tokens (stored in the server database)
-
-```dart
-// Example of creating tokens in a two-tier authorization system
+// Пример создания токенов в двухуровневой системе авторизации
 Future<AuthTokens> createAuthTokens(User user) async {
-  // Short-lived access token
+  // Краткосрочный токен доступа
   final accessTokenData = {
     'sub': user.id,
     'exp': DateTime.now().add(Duration(minutes: 15)).millisecondsSinceEpoch ~/ 1000,
-    'jti': generateUniqueId(), // Token ID for protection against reuse
+    'jti': generateUniqueId(), // ID токена для защиты от повторного использования
   };
   
-  final accessToken = await Message.signString(
-    jsonEncode(accessTokenData),
-    version: Version.v4,
+  // Создаем пакет с данными
+  final package = Package(
+    content: utf8.encode(jsonEncode(accessTokenData)),
+  );
+
+  // Подписываем с помощью PublicV4
+  final signedPayload = await PublicV4.sign(
+    package,
     keyPair: authKeyPair,
   );
   
-  // Generating a refresh token and storing it in the database
+  // Создаем токен
+  final token = Token(
+    header: PublicV4.header,
+    payload: signedPayload,
+    footer: null,
+  );
+  
+  // Генерируем токен обновления и сохраняем его в базе данных
   final refreshToken = generateSecureRandomString();
   await storeRefreshTokenInDatabase(user.id, refreshToken);
   
   return AuthTokens(
-    accessToken: accessToken.toToken.toTokenString,
+    accessToken: token.toTokenString,
     refreshToken: refreshToken,
   );
 }
 ```
 
-2. **Add server-side state verification**:
-   - Store IDs of used tokens
-   - Maintain a whitelist/blacklist of active sessions
-   - Implement a mechanism for immediate token revocation
+2. **Добавьте проверку состояния на сервере**:
+   - Храните ID использованных токенов
+   - Поддерживайте белый/черный список активных сессий
+   - Реализуйте механизм немедленного отзыва токена
 
+3. **Для критических операций используйте одноразовые токены**:
+   - Добавьте уникальный идентификатор (`jti`) в полезную нагрузку
+   - Проверяйте на сервере, был ли токен уже использован
+   - После использования добавляйте ID токена в список использованных токенов
+
+### Чего не следует делать
+
+❌ **Не используйте PASETO как постоянные токены доступа**:
 ```dart
-// Example of token validation on the server
-Future<bool> validateAccessToken(String tokenString) async {
-  try {
-    final token = await Token.fromString(tokenString);
-    final message = await token.verifyPublicMessage(publicKey: authPublicKey);
-    final payload = jsonDecode(message.stringContent!);
-    
-    // Checking expiration time
-    final expiration = payload['exp'] as int;
-    if (DateTime.now().millisecondsSinceEpoch ~/ 1000 > expiration) {
-      return false; // Token expired
-    }
-    
-    // Checking if the token has already been used (for one-time operations)
-    final tokenId = payload['jti'] as String;
-    if (await wasTokenAlreadyUsed(tokenId)) {
-      return false; // Token already used
-    }
-    
-    // Checking if the session has been revoked
-    final userId = payload['sub'] as String;
-    if (await isUserSessionRevoked(userId)) {
-      return false; // Session revoked by administrator
-    }
-    
-    // Optional: for critical operations, mark the token as used
-    // await markTokenAsUsed(tokenId);
-    
-    return true;
-  } catch (e) {
-    return false; // Validation error
-  }
-}
-```
-
-3. **For critical operations, use one-time tokens**:
-   - Add a unique identifier (`jti`) to the payload
-   - Check on the server if the token has already been used
-   - After use, add the token ID to the list of used tokens
-
-### What Not to Do
-
-❌ **Don't use PASETO as permanent access tokens**:
-```dart
-// INCORRECT: Using a long-lived token for all requests
+// НЕПРАВИЛЬНО: использование долгосрочного токена для всех запросов
 final userData = {
   'sub': 'user123',
   'exp': DateTime.now().add(Duration(days: 30)).millisecondsSinceEpoch ~/ 1000
 };
 ```
 
-❌ **Don't rely solely on token expiration for security**:
+❌ **Не полагайтесь только на срок действия токена для обеспечения безопасности**:
 ```dart
-// INCORRECT: No additional server-side checks
+// НЕПРАВИЛЬНО: нет дополнительных проверок на стороне сервера
 if (tokenData['exp'] > currentTimestamp) {
-  // Granting access based only on expiration time
+  // Предоставление доступа только на основе срока действия
   grantAccess();
 }
 ```
 
-## ⚙️ PASETO Implementations in Other Languages
+## ⚙️ Реализации PASETO на других языках
 
-PASETO has implementations in many languages. You can find them on the [official website](https://paseto.io/implementations/).
+PASETO имеет реализации на многих языках. Вы можете найти их на [официальном сайте](https://paseto.io/implementations/).
 
-## 📖 Useful Links
+## 📖 Полезные ссылки
 
-- [Official PASETO Specification](https://github.com/paseto-standard/paseto-spec)
-- [Official Website](https://paseto.io/)
-- [Article about PASETO by its author](https://paragonie.com/blog/2018/03/paseto-platform-agnostic-security-tokens-is-secure-alternative-jose-standards-jwt-etc)
-- [Comparison with JWT](https://developer.okta.com/blog/2019/10/17/a-thorough-introduction-to-paseto)
+- [Официальная спецификация PASETO](https://github.com/paseto-standard/paseto-spec)
+- [Официальный сайт](https://paseto.io/)
+- [Статья о PASETO от автора](https://paragonie.com/blog/2018/03/paseto-platform-agnostic-security-tokens-is-secure-alternative-jose-standards-jwt-etc)
+- [Сравнение с JWT](https://developer.okta.com/blog/2019/10/17/a-thorough-introduction-to-paseto)

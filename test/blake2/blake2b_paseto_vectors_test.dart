@@ -111,7 +111,8 @@ void main() {
       // Важно для PASETO, где могут обрабатываться большие токены
 
       // Создаем большой блок данных (1MB)
-      final largeData = Uint8List(1024 * 1024)..fillRange(0, 1024 * 1024, 0xFF);
+      final largeData = Uint8List(1024 * 1024 * 10)
+        ..fillRange(0, 1024 * 1024 * 10, 0xFF);
 
       // Хешируем данные с помощью Blake2b
       final blake2b = Blake2b(digestSize: 64);
@@ -124,8 +125,9 @@ void main() {
       stopwatch.stop();
       final elapsedMilliseconds = stopwatch.elapsedMilliseconds;
 
+      final size = largeData.length ~/ 1024 ~/ 1024;
       // Печатаем время выполнения для информации
-      print('BLAKE2b hashed 1MB in $elapsedMilliseconds ms');
+      print('BLAKE2b hashed $size MB in $elapsedMilliseconds ms');
 
       // Проверяем, что хеш имеет правильную длину
       expect(hash.length, equals(64)); // 512 бит

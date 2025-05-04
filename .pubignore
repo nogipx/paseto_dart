@@ -1,0 +1,15 @@
+test/
+.cursor/
+.cursorignore
+.fvmrc
+.vscode/
+justfile
+REUSE.toml
+coverage/
+docs/
+LICENSES/
+*.pem
+*.bin
+bin/licensify
+test_cli/
+build/
