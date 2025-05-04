@@ -7,11 +7,10 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
-import 'package:paseto_dart/blake2/blake2.dart' as blake2lib;
+import 'package:paseto_dart/blake2/_index.dart' as blake2lib;
 import 'package:paseto_dart/models/_index.dart';
 import 'package:paseto_dart/utils/_index.dart';
 import 'package:paseto_dart/paseto_dart.dart';
-import 'package:blake2/blake2.dart' as original_blake2;
 
 // Для совместимости тестов с векторами
 // Эта переменная будет использоваться только в тестах
@@ -273,110 +272,50 @@ class LocalV4 {
     // - counter nonce (24 байта)
     // - ключ аутентификации (32 байта)
 
-    if (_useCompatibilityMode) {
-      // В режиме совместимости используем оригинальную реализацию
-      // с двумя вызовами blake2b для вывода 64 байт
-      // Это необходимо для поддержки тестовых векторов
+    // Используем нашу реализацию Blake2b с поддержкой 64-байтного вывода
 
-      // 1. Генерируем ключ шифрования и nonce
-      final encKeyDomain = utf8.encode(_encryptionKeyDomain);
-      final encInput = Uint8List(encKeyDomain.length + nonce.length);
-      encInput.setAll(0, encKeyDomain);
-      encInput.setAll(encKeyDomain.length, nonce);
+    // 1. Генерируем ключ шифрования и nonce
+    // BLAKE2b(output=64bytes, key, 'paseto-encryption-key' || nonce)
+    // Используем размер 512 бит (64 байта), из которых берем:
+    // - первые 32 байта как ключ шифрования
+    // - следующие 24 байта как counter nonce
+    final encKeyDomain = utf8.encode(_encryptionKeyDomain);
+    final encInput = Uint8List(encKeyDomain.length + nonce.length);
+    encInput.setAll(0, encKeyDomain);
+    encInput.setAll(encKeyDomain.length, nonce);
 
-      // Библиотека blake2 ограничивает digestLength до 32, поэтому делаем два вызова
-      // Первый вызов - для получения ключа шифрования
-      final blake2bEnc1 = original_blake2.Blake2b(
-        key: Uint8List.fromList(key),
-        digestLength: 32, // 256 бит = 32 байта (максимум для библиотеки)
-      );
-      blake2bEnc1.update(encInput);
-      final encryptionKey = blake2bEnc1.digest();
+    // Используем нашу модифицированную библиотеку Blake2b
+    // с поддержкой 64-байтного вывода для одного вызова
+    final blake2bEnc = blake2lib.Blake2b(
+      key: Uint8List.fromList(key),
+      digestSize: 64, // 512 бит = 64 байта
+    );
+    final output = blake2bEnc.process(encInput);
 
-      // Второй вызов - для получения nonce
-      // Добавляем '2' к входным данным, чтобы получить другой хеш
-      final encInputForNonce = Uint8List(encInput.length + 1);
-      encInputForNonce.setAll(0, encInput);
-      encInputForNonce[encInput.length] =
-          '2'.codeUnitAt(0); // Добавляем '2' в конец
+    // Разделяем 64-байтный вывод на нужные части
+    final encryptionKey =
+        output.sublist(0, 32); // 32 байта для ключа шифрования
+    final counterNonce = output.sublist(32, 56); // 24 байта для nonce
 
-      final blake2bEnc2 = original_blake2.Blake2b(
-        key: Uint8List.fromList(key),
-        digestLength: 32, // 256 бит = 32 байта
-      );
-      blake2bEnc2.update(encInputForNonce);
-      final nonceBytes = blake2bEnc2.digest();
+    // 2. Генерируем ключ аутентификации (Ak)
+    // BLAKE2b(output=32bytes, key, 'paseto-auth-key-for-aead' || nonce)
+    final authKeyDomain = utf8.encode(_authKeyDomain);
+    final authInput = Uint8List(authKeyDomain.length + nonce.length);
+    authInput.setAll(0, authKeyDomain);
+    authInput.setAll(authKeyDomain.length, nonce);
 
-      // Используем только первые 24 байта для counter nonce
-      final counterNonce = nonceBytes.sublist(0, 24);
+    // Вычисляем ключ аутентификации с помощью Blake2b
+    final blake2bAuth = blake2lib.Blake2b(
+      key: Uint8List.fromList(key),
+      digestSize: 32, // 256 бит = 32 байта
+    );
+    final authKeyData = blake2bAuth.process(authInput);
 
-      // 2. Генерируем ключ аутентификации (Ak)
-      final authKeyDomain = utf8.encode(_authKeyDomain);
-      final authInput = Uint8List(authKeyDomain.length + nonce.length);
-      authInput.setAll(0, authKeyDomain);
-      authInput.setAll(authKeyDomain.length, nonce);
-
-      // Вычисляем ключ аутентификации с помощью Blake2b
-      final blake2bAuth = original_blake2.Blake2b(
-        key: Uint8List.fromList(key),
-        digestLength: 32, // 256 бит = 32 байта
-      );
-      blake2bAuth.update(authInput);
-      final authKeyData = blake2bAuth.digest();
-
-      return _DerivedKeys(
-        encryptionKey: encryptionKey,
-        counterNonce: counterNonce,
-        authKey: authKeyData,
-      );
-    } else {
-      // Используем нашу реализацию Blake2b с поддержкой 64-байтного вывода
-
-      // 1. Генерируем ключ шифрования и nonce
-      // BLAKE2b(output=64bytes, key, 'paseto-encryption-key' || nonce)
-      // Используем размер 512 бит (64 байта), из которых берем:
-      // - первые 32 байта как ключ шифрования
-      // - следующие 24 байта как counter nonce
-      final encKeyDomain = utf8.encode(_encryptionKeyDomain);
-      final encInput = Uint8List(encKeyDomain.length + nonce.length);
-      encInput.setAll(0, encKeyDomain);
-      encInput.setAll(encKeyDomain.length, nonce);
-
-      // Используем нашу модифицированную библиотеку Blake2b
-      // с поддержкой 64-байтного вывода для одного вызова
-      final blake2bEnc = blake2lib.Blake2b(
-        key: Uint8List.fromList(key),
-        digestLength: 64, // 512 бит = 64 байта
-      );
-      blake2bEnc.update(encInput);
-      final output = blake2bEnc.digest();
-
-      // Разделяем 64-байтный вывод на нужные части
-      final encryptionKey =
-          output.sublist(0, 32); // 32 байта для ключа шифрования
-      final counterNonce = output.sublist(32, 56); // 24 байта для nonce
-
-      // 2. Генерируем ключ аутентификации (Ak)
-      // BLAKE2b(output=32bytes, key, 'paseto-auth-key-for-aead' || nonce)
-      final authKeyDomain = utf8.encode(_authKeyDomain);
-      final authInput = Uint8List(authKeyDomain.length + nonce.length);
-      authInput.setAll(0, authKeyDomain);
-      authInput.setAll(authKeyDomain.length, nonce);
-
-      // Вычисляем ключ аутентификации с помощью Blake2b
-      final blake2bAuth = blake2lib.Blake2b(
-        key: Uint8List.fromList(key),
-        digestLength: 32, // 256 бит = 32 байта
-      );
-      blake2bAuth.update(authInput);
-      final authKeyData = blake2bAuth.digest();
-
-      return _DerivedKeys(
-        encryptionKey: encryptionKey,
-        counterNonce: counterNonce,
-        authKey: authKeyData,
-      );
-    }
+    return _DerivedKeys(
+      encryptionKey: encryptionKey,
+      counterNonce: counterNonce,
+      authKey: authKeyData,
+    );
   }
 
   /// Реализует Pre-Authentication Encoding (PAE) согласно спецификации PASETO.
@@ -448,21 +387,21 @@ class LocalV4 {
   /// для совместимости с тестовыми векторами
   static Uint8List _computeMacWithCompatibility(
       List<int> preAuth, List<int> authKey) {
-    final blake2bMac = original_blake2.Blake2b(
+    final blake2bMac = blake2lib.Blake2b(
       key: Uint8List.fromList(authKey),
-      digestLength: 32, // 256 бит
+      digestSize: 32, // 256 бит
     );
-    blake2bMac.update(Uint8List.fromList(preAuth));
-    return blake2bMac.digest();
+    final output = blake2bMac.process(Uint8List.fromList(preAuth));
+    return output.sublist(0, 32);
   }
 
   /// Вычисляет MAC с помощью нашей улучшенной реализации Blake2b
   static Uint8List _computeMac(List<int> preAuth, List<int> authKey) {
     final blake2bMac = blake2lib.Blake2b(
       key: Uint8List.fromList(authKey),
-      digestLength: 32, // 256 бит
+      digestSize: 32, // 256 бит
     );
-    blake2bMac.update(Uint8List.fromList(preAuth));
-    return blake2bMac.digest();
+    final output = blake2bMac.process(Uint8List.fromList(preAuth));
+    return output.sublist(0, 32);
   }
 }
