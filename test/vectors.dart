@@ -45,6 +45,16 @@ class Vectors {
 
     return Vectors(name: name, local: local, public: public, version: version);
   }
+
+  /// Загружает тестовые векторы для PASETO v3
+  static Vectors loadV3() {
+    return Vectors.fromJsonFile(Version.v3, 'test/vectors/v3.json');
+  }
+
+  /// Загружает тестовые векторы для PASETO v4
+  static Vectors loadV4() {
+    return Vectors.fromJsonFile(Version.v4, 'test/vectors/v4.json');
+  }
 }
 
 /// Класс для тестового вектора типа local

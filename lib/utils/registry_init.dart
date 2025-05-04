@@ -9,6 +9,13 @@ import 'package:pointycastle/src/registry/registry.dart';
 
 /// Инициализирует регистр алгоритмов PointyCastle для нужд библиотеки
 class PasetoRegistryInitializer {
+  // ChaCha20-Poly1305 для v2.local
+  static void initV2Local() {
+    registry.register(StaticFactoryConfig(
+        StreamCipher, 'ChaCha7539', () => ChaCha7539Engine()));
+    registry.register(StaticFactoryConfig(Mac, 'POLY1305', () => Poly1305()));
+  }
+
   // AES-CTR + HMAC для v3.local
   static void initV3Local() {
     registry
@@ -25,10 +32,24 @@ class PasetoRegistryInitializer {
 
   // XChaCha20-Poly1305 для v4.local
   static void initV4Local() {
-    // Базовые алгоритмы для ChaCha20-Poly1305
     registry.register(StaticFactoryConfig(
         StreamCipher, 'ChaCha7539', () => ChaCha7539Engine()));
     registry.register(StaticFactoryConfig(Mac, 'POLY1305', () => Poly1305()));
+
+    // Добавляем алгоритмы для HKDF и SHA-512
+    registry
+        .register(StaticFactoryConfig(Digest, 'SHA-512', () => SHA512Digest()));
+    registry.register(StaticFactoryConfig(
+        KeyDerivator, 'HKDF/SHA-512', () => HKDFKeyDerivator(SHA512Digest())));
+
+    // Регистрируем Blake2b для v4.local
+    registry.register(StaticFactoryConfig(
+        Digest, 'BLAKE2B', () => Blake2bDigest(digestSize: 32)));
+  }
+
+  // Ed25519 для v2.public
+  static void initV2Public() {
+    // Используется собственная реализация Ed25519
   }
 
   // ECDSA+P384+SHA384 для v3.public
@@ -53,7 +74,8 @@ class PasetoRegistryInitializer {
 
   // Ed25519 для v4.public
   static void initV4Public() {
-    // Только регистрируем FortunaRandom, т.к. используется отдельная реализация Ed25519
+    // Для Ed25519 в v4.public используется отдельная реализация
+    // Но нужен FortunaRandom для некоторых операций
     final secureRandom = FortunaRandom();
     secureRandom
         .seed(KeyParameter(Uint8List.fromList(List.generate(32, (i) => i))));
