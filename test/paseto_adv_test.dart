@@ -157,7 +157,7 @@ void main() {
         final parts = tokenString.split('.');
         expect(parts.length, 4); // header, payload, ciphertext, footer
 
-        final decodedFooter = decodePasetoBase64(parts[3]);
+        final decodedFooter = SafeBase64.decode(parts[3]);
         expect(utf8.decode(decodedFooter), utf8.decode(footer));
 
         // Расшифровываем токен и проверяем футер
@@ -176,14 +176,14 @@ void main() {
       test('Неверный формат токена', () async {
         expect(
           () => Token.fromString('invalid.token.format'),
-          throwsA(isA<ArgumentError>()),
+          throwsA(isA<FormatException>()),
         );
       });
 
       test('Неверная версия токена', () async {
         expect(
           () => Token.fromString('v9.local.invalidtoken'),
-          throwsA(isA<ArgumentError>()),
+          throwsA(isA<FormatException>()),
         );
       });
 

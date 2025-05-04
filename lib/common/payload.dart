@@ -38,7 +38,7 @@ class PayloadLocal implements Payload {
     if (mac != null) {
       result += mac.bytes;
     }
-    return encodePasetoBase64(result);
+    return SafeBase64.encode(result);
   }
 }
 
@@ -68,9 +68,9 @@ class PayloadPublic implements Payload {
   String get toTokenString {
     final signature = this.signature;
     if (signature != null) {
-      return encodePasetoBase64(message + signature);
+      return SafeBase64.encode(message + signature);
     } else {
-      return encodePasetoBase64(message);
+      return SafeBase64.encode(message);
     }
   }
 }

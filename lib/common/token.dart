@@ -34,7 +34,7 @@ class Token extends Equatable {
     var tokenString = header.toTokenString + payload.toTokenString;
     final footer = this.footer;
     if (footer != null && footer.isNotEmpty) {
-      tokenString += '.${encodePasetoBase64(footer)}';
+      tokenString += '.${SafeBase64.encode(footer)}';
     }
     return tokenString;
   }
@@ -160,7 +160,7 @@ class Token extends Equatable {
     return Token(
       header: header,
       payload: decodePayload(components[2], header: header),
-      footer: components.length > 3 ? decodePasetoBase64(components[3]) : null,
+      footer: components.length > 3 ? SafeBase64.decode(components[3]) : null,
     );
   }
 
@@ -168,7 +168,7 @@ class Token extends Equatable {
     String string, {
     required Header header,
   }) {
-    final bytes = decodePasetoBase64(string);
+    final bytes = SafeBase64.decode(string);
 
     // Используем общую логику декодирования в зависимости от версии и purpose
     switch (header.purpose) {
@@ -293,46 +293,45 @@ class Token extends Equatable {
   static Uint8List preAuthenticationEncoding({
     required Header header,
     required Payload payload,
-    List<int>? footer,
+    required List<int>? footer,
     List<int>? implicit,
   }) {
-    final components = [
-      Uint8List.fromList(header.bytes),
+    final headerString = [header.version.name, header.purpose.name].join('.');
+    final headerComponent = Uint8List.fromList(utf8.encode(headerString));
+
+    // Формируем payload данные
+    final payloadComponent = switch (payload) {
+      PayloadLocal() => Uint8List.fromList(payload.nonce?.bytes ?? []),
+      PayloadPublic() => Uint8List.fromList(payload.message),
+      _ => Uint8List(0),
+    };
+
+    final footerComponent = Uint8List.fromList(footer ?? []);
+    final implicitComponent = Uint8List.fromList(implicit ?? []);
+
+    // Формируем массив из 2 основных компонентов: сериализованный header и payload
+    final components = <Uint8List>[
+      headerComponent,
+      payloadComponent,
+      footerComponent,
+      implicitComponent,
     ];
-    if (payload is PayloadLocal) {
-      final nonce = payload.nonce;
-      if (nonce != null) {
-        components.add(Uint8List.fromList(nonce.bytes));
-      }
-      final secretBox = payload.secretBox;
-      if (secretBox != null) {
-        components.add(Uint8List.fromList(secretBox.cipherText));
-      }
-    } else if (payload is PayloadPublic) {
-      components.add(Uint8List.fromList(payload.message));
-    }
-    if (footer != null) {
-      components.add(Uint8List.fromList(footer));
-    } else {
-      components.add(Uint8List(0));
-    }
-    if (implicit != null) {
-      components.add(Uint8List.fromList(implicit));
-    }
+
     return _preAuthenticationEncoding(components);
   }
 
   static Uint8List _preAuthenticationEncoding(List<Uint8List> components) {
-    return Uint8List.fromList(
-      _componentLengthToByteData(components.length) +
-          components.fold(
-            Uint8List.fromList(<int>[]),
-            (previousValue, element) =>
-                previousValue +
-                _componentLengthToByteData(element.length) +
-                element,
-          ),
-    );
+    final result = <int>[];
+    assert(components.length == 4);
+
+    result.addAll(_componentLengthToByteData(components.length));
+
+    for (var i = 0; i < components.length; i++) {
+      result.addAll(_componentLengthToByteData(components[i].length));
+      result.addAll(components[i]);
+    }
+
+    return Uint8List.fromList(result);
   }
 
   static Uint8List _componentLengthToByteData(int value) {

@@ -4,8 +4,6 @@ import 'dart:typed_data';
 import 'package:paseto_dart/paseto_dart.dart';
 import 'package:test/test.dart';
 
-import 'test_utils.dart';
-
 void main() {
   group('PASETO Utils Tests', () {
     group('Base64 кодирование/декодирование', () {
@@ -15,8 +13,8 @@ void main() {
             Uint8List.fromList([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
         // Act
-        final encoded = base64Url.encode(originalData);
-        final decoded = base64Url.decode(encoded);
+        final encoded = SafeBase64.encode(originalData);
+        final decoded = SafeBase64.decode(encoded);
 
         // Assert
         expect(decoded, equals(originalData));
@@ -28,8 +26,8 @@ void main() {
         final data2 = Uint8List.fromList([1, 2, 3, 4]); // не требует паддинга
 
         // Act
-        final encoded1 = base64Url.encode(data1);
-        final encoded2 = base64Url.encode(data2);
+        final encoded1 = SafeBase64.encode(data1);
+        final encoded2 = SafeBase64.encode(data2);
 
         // Assert
         expect(encoded1.endsWith('='), isFalse,
@@ -38,22 +36,8 @@ void main() {
             reason: 'Base64Url не должен содержать паддинг');
 
         // Проверяем, что декодирование работает правильно
-        expect(base64Url.decode(encoded1), equals(data1));
-        expect(base64Url.decode(encoded2), equals(data2));
-      });
-
-      test('Специальные символы в Base64Url', () {
-        // В Base64Url '+' заменяется на '-', а '/' на '_'
-        final standardBase64 = 'a+b/c==';
-        final expectedBase64Url = 'a-b_c';
-
-        // Проверяем, что '=' в конце удаляется
-        expect(
-            standardBase64
-                .replaceAll('+', '-')
-                .replaceAll('/', '_')
-                .replaceAll('=', ''),
-            equals(expectedBase64Url));
+        expect(SafeBase64.decode(encoded1), equals(data1));
+        expect(SafeBase64.decode(encoded2), equals(data2));
       });
     });
 
@@ -154,7 +138,7 @@ void main() {
         expect(payload, isNotNull);
 
         // Проверяем, что сериализация обратно в строку даёт исходную строку
-        expect(token.toString(), equals(tokenStr));
+        expect(token.toTokenString, equals(tokenStr));
       });
 
       test('Парсинг токена с footer', () async {
@@ -173,7 +157,7 @@ void main() {
         expect(utf8.decode(token.footer!), equals(expectedFooter));
 
         // Проверяем, что сериализация обратно в строку даёт исходную строку
-        expect(token.toString(), equals(tokenStr));
+        expect(token.toTokenString, equals(tokenStr));
       });
 
       test('Инвалидный формат токена', () async {
@@ -188,52 +172,5 @@ void main() {
             Token.fromString(invalidToken2), throwsA(isA<FormatException>()));
       });
     });
-
-    group('Константное время сравнения', () {
-      test('Сравнение одинаковых массивов', () {
-        // Arrange
-        final a = Uint8List.fromList([1, 2, 3, 4, 5]);
-        final b = Uint8List.fromList([1, 2, 3, 4, 5]);
-
-        // Act & Assert - нам нужно проверить, что реализация включает константное время сравнения
-        // Мы можем только косвенно проверить результат, поскольку не можем напрямую измерить время
-        expect(_constantTimeEquals(a, b), isTrue);
-      });
-
-      test('Сравнение разных массивов', () {
-        // Arrange
-        final a = Uint8List.fromList([1, 2, 3, 4, 5]);
-        final b =
-            Uint8List.fromList([1, 2, 3, 4, 6]); // Отличается последний байт
-
-        // Act & Assert
-        expect(_constantTimeEquals(a, b), isFalse);
-      });
-
-      test('Сравнение массивов разной длины', () {
-        // Arrange
-        final a = Uint8List.fromList([1, 2, 3, 4, 5]);
-        final b = Uint8List.fromList([1, 2, 3, 4]);
-
-        // Act & Assert
-        expect(_constantTimeEquals(a, b), isFalse);
-      });
-    });
   });
-}
-
-/// Реализация сравнения в константном времени для тестирования
-bool _constantTimeEquals(List<int> a, List<int> b) {
-  if (a.length != b.length) {
-    return false;
-  }
-
-  int result = 0;
-  for (int i = 0; i < a.length; i++) {
-    // XOR каждой пары байтов, результат OR с общим результатом
-    // Это гарантирует, что времена сравнения одинаковы для всех входных данных
-    result |= a[i] ^ b[i];
-  }
-
-  return result == 0;
 }
