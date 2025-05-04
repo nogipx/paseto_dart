@@ -40,6 +40,23 @@ class Ed25519 {
     );
   }
 
+  /// Вычисляет публичный ключ из 32-байтного seed (приватного ключа)
+  PublicKey derivePublicKey(List<int> seed) {
+    if (seed.length != privateKeySize) {
+      throw ArgumentError('Seed must be $privateKeySize bytes');
+    }
+
+    // Создаем приватный ключ из seed
+    final seedBytes = Uint8List.fromList(seed);
+    // Для генерации публичного ключа нужно использовать функции,
+    // соответствующие API библиотеки ed25519_edwards
+    final privateKey = ed.newKeyFromSeed(seedBytes);
+    final publicKey = ed.public(privateKey);
+
+    // Возвращаем публичный ключ
+    return PublicKeyData(publicKey.bytes);
+  }
+
   /// Подписывает сообщение используя Ed25519
   Future<Signature> sign(
     List<int> message, {

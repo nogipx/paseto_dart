@@ -26,8 +26,8 @@ class CryptographyException implements Exception {
 
 /// Исключение возникающее при неправильном MAC
 @immutable
-class SecretBoxAuthenticationError extends Error {
-  SecretBoxAuthenticationError(this.message);
+class SecretBoxAuthenticationError implements Exception {
+  const SecretBoxAuthenticationError(this.message);
   final String message;
 
   @override

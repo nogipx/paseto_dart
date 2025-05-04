@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:paseto_dart/paseto_dart.dart';
 import 'package:test/test.dart';

@@ -5,8 +5,6 @@ import 'package:paseto_dart/paseto_dart.dart';
 import 'package:paseto_dart/common/ed25519.dart' as ed25519_pkg;
 import 'package:test/test.dart';
 
-import 'test_utils.dart';
-
 void main() {
   group('PASETO Advanced Tests', () {
     // Проверяем работу с implicit assertions в v3 и v4
@@ -83,7 +81,7 @@ void main() {
         // Подписываем с implicit assertions
         final signedPayload = await PublicV4.sign(
           package,
-          keyPair: keyPair,
+          secretKey: keyPair.privateKey,
           implicit: context,
         );
 

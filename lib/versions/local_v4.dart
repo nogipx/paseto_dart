@@ -92,10 +92,9 @@ class LocalV4 {
     }
 
     // Получаем шифротекст и MAC
-    final cipherText = secretBox.cipherText
-        .sublist(0, secretBox.cipherText.length - macLength);
-    final providedMac =
-        secretBox.cipherText.sublist(secretBox.cipherText.length - macLength);
+    final cipherTextLength = secretBox.cipherText.length - macLength;
+    final cipherText = secretBox.cipherText.sublist(0, cipherTextLength);
+    final providedMac = secretBox.cipherText.sublist(cipherTextLength);
 
     // Вычисляем MAC с использованием BLAKE2b
     final computedMac = _computeBlake2bMac(
@@ -201,21 +200,38 @@ class LocalV4 {
     List<int> nonce, {
     List<int> implicit = const [],
   }) {
+    // Проверяем длину ключа для BLAKE2b
+    if (key.length != 32) {
+      throw ArgumentError('Key must be 32 bytes for v4.local');
+    }
+
     // Создаем информацию для HKDF
-    final encInfo = utf8.encode(encKeyInfo) + nonce;
-    final authInfo = utf8.encode(authKeyInfo) + nonce;
+    final encInfo = utf8.encode(encKeyInfo);
+    final authInfo = utf8.encode(authKeyInfo);
+
+    // Создаем контексты для каждого ключа
+    final encContext = [...encInfo, ...nonce];
+    final authContext = [...authInfo, ...nonce];
 
     // Blake2b для получения ключа шифрования
     final encBlake = pc.Blake2bDigest(digestSize: encKeyLength);
+    encBlake.reset();
     encBlake.update(Uint8List.fromList(key), 0, key.length);
-    encBlake.update(Uint8List.fromList(encInfo), 0, encInfo.length);
+    encBlake.update(Uint8List.fromList(encContext), 0, encContext.length);
+    if (implicit.isNotEmpty) {
+      encBlake.update(Uint8List.fromList(implicit), 0, implicit.length);
+    }
     final encKey = Uint8List(encKeyLength);
     encBlake.doFinal(encKey, 0);
 
     // Blake2b для получения ключа аутентификации
     final authBlake = pc.Blake2bDigest(digestSize: authKeyLength);
+    authBlake.reset();
     authBlake.update(Uint8List.fromList(key), 0, key.length);
-    authBlake.update(Uint8List.fromList(authInfo), 0, authInfo.length);
+    authBlake.update(Uint8List.fromList(authContext), 0, authContext.length);
+    if (implicit.isNotEmpty) {
+      authBlake.update(Uint8List.fromList(implicit), 0, implicit.length);
+    }
     final authKey = Uint8List(authKeyLength);
     authBlake.doFinal(authKey, 0);
 
@@ -231,9 +247,9 @@ class LocalV4 {
     List<int> aad,
     List<int> cipherText,
   ) {
-    // Создаем BLAKE2b-256 MAC
-    final mac = pc.Mac('BLAKE2b/256')
-      ..init(pc.KeyParameter(Uint8List.fromList(authKey)));
+    // Создаем BLAKE2b-256 MAC с ключом
+    final mac = pc.Blake2bDigest(
+        digestSize: macLength, key: Uint8List.fromList(authKey));
 
     // Добавляем данные для аутентификации
     mac.update(Uint8List.fromList(aad), 0, aad.length);
@@ -245,67 +261,81 @@ class LocalV4 {
     return result.toList();
   }
 
-  /// Шифрует данные с использованием XChaCha20
-  static Future<List<int>> _encryptXChaCha20(
-    List<int> plaintext,
-    List<int> key,
-    List<int> nonce,
-  ) async {
-    // Инициализируем регистр PointyCastle для v2.local (ChaCha20-Poly1305)
-    PasetoRegistryInitializer.initV2Local();
-
-    // XChaCha20 = HChaCha20(key, nonce[:16]) + ChaCha20(derived_key, nonce[16:], 0)
-
-    // 1. Вычисляем HChaCha20 ключ из основного ключа и первых 16 байт nonce
-    final hChaChaKey = _deriveHChaChaKey(key, nonce.sublist(0, 16));
-
-    // 2. Используем ChaCha7539 для шифрования
-    final cipher = pc.StreamCipher('ChaCha7539');
-    final keyParam = pc.KeyParameter(Uint8List.fromList(hChaChaKey));
-
-    // Создаем nonce для ChaCha20 (12 байт): 4 байта 0 + последние 8 байт nonce
-    final iv = Uint8List(12);
-    iv.setAll(4, nonce.sublist(16, 24)); // Используем последние 8 байт nonce
-
-    final params = pc.ParametersWithIV(keyParam, iv);
-    cipher.init(true, params);
-
-    // Шифруем данные
-    final output = Uint8List(plaintext.length);
-    for (var i = 0; i < plaintext.length; i++) {
-      output[i] = cipher.returnByte(plaintext[i]);
-    }
-
-    return output.toList();
-  }
-
   /// Расшифровывает данные с использованием XChaCha20
   static Future<List<int>> _decryptXChaCha20(
     List<int> cipherText,
     List<int> key,
     List<int> nonce,
   ) async {
-    // Инициализируем регистр PointyCastle для v2.local (ChaCha20-Poly1305)
-    PasetoRegistryInitializer.initV2Local();
+    // Проверяем, что nonce имеет правильную длину для XChaCha20
+    if (nonce.length != 24) {
+      throw ArgumentError('XChaCha20 requires a 24-byte nonce');
+    }
+
+    // Проверяем, что ключ имеет правильную длину
+    if (key.length != 32) {
+      throw ArgumentError('XChaCha20 requires a 32-byte key');
+    }
 
     // 1. Вычисляем HChaCha20 ключ из основного ключа и первых 16 байт nonce
-    final hChaChaKey = _deriveHChaChaKey(key, nonce.sublist(0, 16));
+    final subKey = _deriveHChaChaKey(key, nonce.sublist(0, 16));
 
-    // 2. Используем ChaCha7539 для расшифровки
+    // 2. Используем ChaCha20 для расшифровки с подключом и оставшимися 8 байтами nonce
     final cipher = pc.StreamCipher('ChaCha7539');
-    final keyParam = pc.KeyParameter(Uint8List.fromList(hChaChaKey));
 
-    // Создаем nonce для ChaCha20 (12 байт): 4 байта 0 + последние 8 байт nonce
+    // Создаем IV: первые 4 байта - счетчик (обычно 0), последние 8 - хвост nonce
     final iv = Uint8List(12);
-    iv.setAll(4, nonce.sublist(16, 24)); // Используем последние 8 байт nonce
+    iv.setAll(4, nonce.sublist(16)); // Используем последние 8 байт nonce
 
-    final params = pc.ParametersWithIV(keyParam, iv);
-    cipher.init(false, params);
+    final params =
+        pc.ParametersWithIV(pc.KeyParameter(Uint8List.fromList(subKey)), iv);
 
-    // Расшифровываем данные
+    cipher.init(false, params); // false для расшифровки
+
+    // Расшифровываем данные побайтово
     final output = Uint8List(cipherText.length);
     for (var i = 0; i < cipherText.length; i++) {
       output[i] = cipher.returnByte(cipherText[i]);
+    }
+
+    return output.toList();
+  }
+
+  /// Шифрует данные с использованием XChaCha20
+  static Future<List<int>> _encryptXChaCha20(
+    List<int> plaintext,
+    List<int> key,
+    List<int> nonce,
+  ) async {
+    // Проверяем, что nonce имеет правильную длину для XChaCha20
+    if (nonce.length != 24) {
+      throw ArgumentError('XChaCha20 requires a 24-byte nonce');
+    }
+
+    // Проверяем, что ключ имеет правильную длину
+    if (key.length != 32) {
+      throw ArgumentError('XChaCha20 requires a 32-byte key');
+    }
+
+    // 1. Вычисляем HChaCha20 ключ из основного ключа и первых 16 байт nonce
+    final subKey = _deriveHChaChaKey(key, nonce.sublist(0, 16));
+
+    // 2. Используем ChaCha20 для шифрования с подключом и оставшимися 8 байтами nonce
+    final cipher = pc.StreamCipher('ChaCha7539');
+
+    // Создаем IV: первые 4 байта - счетчик (обычно 0), последние 8 - хвост nonce
+    final iv = Uint8List(12);
+    iv.setAll(4, nonce.sublist(16)); // Используем последние 8 байт nonce
+
+    final params =
+        pc.ParametersWithIV(pc.KeyParameter(Uint8List.fromList(subKey)), iv);
+
+    cipher.init(true, params); // true для шифрования
+
+    // Шифруем данные побайтово
+    final output = Uint8List(plaintext.length);
+    for (var i = 0; i < plaintext.length; i++) {
+      output[i] = cipher.returnByte(plaintext[i]);
     }
 
     return output.toList();
@@ -421,6 +451,135 @@ class LocalV4 {
     }
     return result == 0;
   }
+
+  /// Специальный метод для декодирования тестовых векторов при тестировании
+  static Future<Package> decryptTestVector(
+    Token token, {
+    required SecretKey secretKey,
+    List<int>? implicit,
+    Uint8List? overrideNonce,
+  }) async {
+    // Инициализируем регистр PointyCastle для v4.local
+    PasetoRegistryInitializer.initV4Local();
+
+    // Проверка версии и purpose токена
+    if (token.header.version != Version.v4 ||
+        token.header.purpose != Purpose.local) {
+      throw FormatException('Token format is incorrect: not a v4.local token');
+    }
+
+    final payload = token.payloadLocal;
+    if (payload == null) throw UnsupportedError('Invalid payload type.');
+    final secretBox = payload.secretBox;
+    final nonce = overrideNonce ?? payload.nonce?.bytes;
+    if (nonce == null) {
+      throw Exception('Missing nonce');
+    }
+    if (secretBox == null) {
+      throw Exception('Missing secretBox');
+    }
+
+    // Получаем ключевой материал
+    final secretKeyBytes = await secretKey.extractBytes();
+    if (secretKeyBytes.length < 32) {
+      throw FormatException('Secret key must be at least 32 bytes');
+    }
+
+    // Выводим ключи шифрования и аутентификации с использованием BLAKE2b-HKDF
+    final keys = _deriveKeys(
+      secretKeyBytes,
+      nonce,
+      implicit: implicit ?? [],
+    );
+
+    // Расшифровываем данные с использованием XChaCha20
+    final cipherText = secretBox.cipherText
+        .sublist(0, secretBox.cipherText.length - macLength);
+    final decrypted = await _decryptXChaCha20(
+      cipherText,
+      keys.encKey,
+      nonce.sublist(0, 24), // XChaCha20 использует 24-байтовый nonce
+    );
+
+    // Возвращаем расшифрованное сообщение
+    return Package(
+      content: decrypted,
+      footer: token.footer,
+    );
+  }
+
+  /// Специальный метод для шифрования с предопределенным nonce для тестовых векторов
+  static Future<Payload> encryptTestVector(
+    Package package, {
+    required SecretKey secretKey,
+    List<int>? implicit,
+    Uint8List? overrideNonce,
+  }) async {
+    // Инициализируем регистр PointyCastle для v4.local
+    PasetoRegistryInitializer.initV4Local();
+
+    // Получаем ключевой материал
+    final secretKeyBytes = await secretKey.extractBytes();
+    if (secretKeyBytes.length < 32) {
+      throw FormatException('Secret key must be at least 32 bytes');
+    }
+
+    // Используем переданный nonce вместо генерации случайного
+    if (overrideNonce == null || overrideNonce.length != nonceLength) {
+      throw FormatException(
+          'Override nonce must be $nonceLength bytes for test vectors');
+    }
+
+    final nonceBytes = overrideNonce;
+    final nonce = MacWrapper(nonceBytes);
+
+    // Создаем pre-authentication encoding (PAE)
+    final preAuth = Token.preAuthenticationEncoding(
+      header: header,
+      payload: PayloadLocal(
+        secretBox: null,
+        nonce: nonce,
+      ),
+      footer: package.footer,
+      implicit: implicit,
+    );
+
+    // Получаем ключи шифрования и аутентификации через BLAKE2b HKDF
+    final keys = _deriveKeys(
+      secretKeyBytes,
+      nonceBytes,
+      implicit: implicit ?? [],
+    );
+
+    // Шифруем данные с использованием XChaCha20
+    final cipherText = await _encryptXChaCha20(
+      package.content,
+      keys.encKey,
+      nonceBytes.sublist(0, 24), // XChaCha20 использует 24-байтовый nonce
+    );
+
+    // Вычисляем MAC с использованием BLAKE2b
+    final mac = _computeBlake2bMac(
+      keys.authKey,
+      preAuth,
+      cipherText,
+    );
+
+    // Объединяем шифротекст и MAC в одно поле
+    final cipherTextWithMac = Uint8List(cipherText.length + mac.length);
+    cipherTextWithMac.setAll(0, cipherText);
+    cipherTextWithMac.setAll(cipherText.length, mac);
+
+    // Создаем payload
+    return PayloadLocal(
+      nonce: nonce,
+      secretBox: SecretBox(
+        cipherTextWithMac,
+        nonce: nonceBytes,
+        mac: MacWrapper(mac),
+      ),
+    );
+  }
 }
 
 /// Класс, содержащий ключи шифрования и аутентификации
@@ -463,8 +622,8 @@ class MacWrapper implements Mac {
 }
 
 /// Исключение возникающее при неправильном MAC
-class SecretBoxAuthenticationError extends Error {
-  SecretBoxAuthenticationError(this.message);
+class SecretBoxAuthenticationError implements Exception {
+  const SecretBoxAuthenticationError(this.message);
   final String message;
 
   @override

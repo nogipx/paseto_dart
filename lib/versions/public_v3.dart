@@ -203,6 +203,7 @@ class PublicV3 {
   static Future<Payload> sign(
     Package package, {
     required KeyPair keyPair,
+    List<int>? implicit,
   }) async {
     // Инициализируем регистрацию алгоритмов
     PasetoRegistryInitializer.initV3Public();
@@ -215,6 +216,7 @@ class PublicV3 {
       header: PublicV3.header,
       payload: PayloadPublic(message: package.content),
       footer: package.footer,
+      implicit: implicit ?? [],
     );
 
     // Подписываем данные
@@ -231,8 +233,8 @@ class PublicV3 {
 }
 
 /// Ошибка при проверке подписи в PASETO токене
-class SignatureVerificationError extends Error {
-  SignatureVerificationError(this.message);
+class SignatureVerificationError implements Exception {
+  const SignatureVerificationError(this.message);
   final String message;
 
   @override

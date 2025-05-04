@@ -10,7 +10,7 @@ import 'package:paseto_dart/paseto_dart.dart';
 import 'package:pointycastle/export.dart' as pc;
 
 /// Класс для обработки ошибок аутентификации
-class SecretBoxAuthenticationError extends Error {
+class SecretBoxAuthenticationError implements Exception {
   SecretBoxAuthenticationError(this.message);
   final String message;
 

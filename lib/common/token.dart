@@ -8,6 +8,7 @@ import 'dart:typed_data';
 import 'package:equatable/equatable.dart';
 import 'package:meta/meta.dart';
 import 'package:paseto_dart/paseto_dart.dart';
+import 'package:paseto_dart/versions/local_v4.dart' show MacWrapper;
 
 @immutable
 class Token extends Equatable {
@@ -121,10 +122,41 @@ class Token extends Equatable {
     if (components.length < 3) {
       throw ArgumentError('Invalid token string', 'string');
     }
+
+    // Первый компонент должен быть вида "v4" (версия)
+    final versionStr = components.first;
+    if (!versionStr.startsWith('v')) {
+      throw FormatException(
+          'Token version must start with "v", got: $versionStr');
+    }
+
+    // Второй компонент должен быть purpose (local/public)
+    final purposeStr = components[1];
+
+    // Проверяем, что версия и purpose корректны
+    Version version;
+    try {
+      // Убираем префикс "v" из строки версии
+      final versionNum = versionStr.substring(1);
+
+      // Поддерживаем все версии: v2, v3, v4
+      version = Version.values.byName('v$versionNum');
+    } catch (e) {
+      throw FormatException('Unsupported token version: $versionStr');
+    }
+
+    Purpose purpose;
+    try {
+      purpose = Purpose.values.byName(purposeStr);
+    } catch (e) {
+      throw FormatException('Unsupported token purpose: $purposeStr');
+    }
+
     final header = Header(
-      version: Version.values.byName(components.first),
-      purpose: Purpose.values.byName(components[1]),
+      version: version,
+      purpose: purpose,
     );
+
     return Token(
       header: header,
       payload: decodePayload(components[2], header: header),
@@ -170,7 +202,7 @@ class Token extends Equatable {
     // Проверяем минимальную длину payload
     if (bytes.length < nonceLength) {
       throw FormatException(
-          'Invalid token payload length for ${version.name}.local');
+          'Invalid token payload length for ${version.name}.local: expected at least $nonceLength bytes, got ${bytes.length}');
     }
 
     // Извлекаем nonce
@@ -179,19 +211,21 @@ class Token extends Equatable {
     // Извлекаем шифротекст с MAC
     final cipherTextWithMac = bytes.sublist(nonceLength);
 
-    // Извлекаем MAC, если есть достаточно данных
-    final Mac mac = cipherTextWithMac.length >= macLength
-        ? Mac(cipherTextWithMac.sublist(cipherTextWithMac.length - macLength))
-        : Mac.empty;
+    // В v4 всегда должен быть достаточный размер для MAC
+    if (cipherTextWithMac.length < macLength) {
+      throw FormatException(
+          'Invalid token ciphertext length for ${version.name}.local: expected at least $macLength bytes for MAC, got ${cipherTextWithMac.length}');
+    }
 
     // Создаем payload
     return PayloadLocal(
       secretBox: SecretBox(
         cipherTextWithMac,
         nonce: nonce,
-        mac: mac,
+        mac: MacWrapper(
+            cipherTextWithMac.sublist(cipherTextWithMac.length - macLength)),
       ),
-      nonce: Mac(nonce),
+      nonce: MacWrapper(nonce),
     );
   }
 
@@ -214,7 +248,7 @@ class Token extends Equatable {
     // Проверяем минимальную длину payload
     if (bytes.length < signatureLength) {
       throw FormatException(
-          'Invalid token payload length for ${version.name}.public');
+          'Invalid token payload length for ${version.name}.public: expected at least $signatureLength bytes, got ${bytes.length}');
     }
 
     // Извлекаем сообщение (оно идет в начале payload) и подпись (она идет в конце)

@@ -145,7 +145,7 @@ class Message extends Equatable {
           package: package,
           payload: await PublicV4.sign(
             package,
-            keyPair: keyPair,
+            secretKey: keyPair.privateKey,
           ),
         );
     }
