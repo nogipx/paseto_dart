@@ -36,6 +36,10 @@ class PasetoRegistryInitializer {
         StreamCipher, 'ChaCha7539', () => ChaCha7539Engine()));
     registry.register(StaticFactoryConfig(Mac, 'POLY1305', () => Poly1305()));
 
+    // Регистрируем XChaCha20 в виде ChaCha20 с измененным nonce
+    registry.register(StaticFactoryConfig(
+        StreamCipher, 'XChaCha20', () => ChaCha7539Engine()));
+
     // Добавляем алгоритмы для HKDF и SHA-512
     registry
         .register(StaticFactoryConfig(Digest, 'SHA-512', () => SHA512Digest()));

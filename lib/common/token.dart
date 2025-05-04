@@ -217,13 +217,15 @@ class Token extends Equatable {
           'Invalid token ciphertext length for ${version.name}.local: expected at least $macLength bytes for MAC, got ${cipherTextWithMac.length}');
     }
 
+    // Для v4 MAC идет в конце шифротекста
+    final mac = cipherTextWithMac.sublist(cipherTextWithMac.length - macLength);
+
     // Создаем payload
     return PayloadLocal(
       secretBox: SecretBox(
         cipherTextWithMac,
         nonce: nonce,
-        mac: MacWrapper(
-            cipherTextWithMac.sublist(cipherTextWithMac.length - macLength)),
+        mac: MacWrapper(mac),
       ),
       nonce: MacWrapper(nonce),
     );

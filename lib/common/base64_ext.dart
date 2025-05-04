@@ -4,7 +4,7 @@
 
 import 'dart:convert';
 
-/// Utility class for safe Base64Url operations with padding removal
+/// Utility class for safe Base64 operations with padding removal
 /// Implements RFC4648 for Base64Url encoding
 class SafeBase64 {
   /// Encodes [bytes] to Base64Url string without padding
@@ -19,11 +19,25 @@ class SafeBase64 {
       return [];
     }
 
+    // Проверка на недопустимые символы в Base64Url для PASETO
+    // Допустимые символы: A-Z, a-z, 0-9, -, _
+    // PASETO не допускает символы паддинга '=' в токенах
+    final validPasetoRegex = RegExp(r'^[A-Za-z0-9\-_]+$');
+    if (!validPasetoRegex.hasMatch(input)) {
+      throw FormatException(
+          'Invalid PASETO Base64Url format: only A-Z, a-z, 0-9, -, _ characters are allowed');
+    }
+
     // Преобразуем URL-safe символы в стандартные base64 символы
     String normalized = input.replaceAll('-', '+').replaceAll('_', '/');
     // Добавляем паддинг, если необходимо
     final paddedInput = _addPadding(normalized);
-    return base64.decode(paddedInput);
+
+    try {
+      return base64.decode(paddedInput);
+    } catch (e) {
+      throw FormatException('Invalid Base64 format: ${e.toString()}');
+    }
   }
 
   /// Adds padding to Base64 [input] if needed to make length кратной 4
