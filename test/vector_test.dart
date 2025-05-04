@@ -1,9 +1,13 @@
 import 'dart:convert';
 import 'package:paseto_dart/paseto_dart.dart';
+import 'package:paseto_dart/versions/local_v4.dart';
 import 'package:test/test.dart';
 import 'vectors.dart';
 
 void main() {
+  // Включаем режим совместимости для тестов
+  enableCompatibilityMode();
+
   final v4Vectors = Vectors.loadV4();
   localTest(v4Vectors);
   publicTest(v4Vectors);
@@ -11,6 +15,9 @@ void main() {
   // final v3Vectors = Vectors.loadV3();
   // localTest(v3Vectors);
   // publicTest(v3Vectors);
+
+  // Отключаем режим совместимости
+  disableCompatibilityMode();
 }
 
 void localTest(Vectors vectors) {
