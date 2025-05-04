@@ -42,8 +42,7 @@ void localTest(Vectors vectors) {
         print('  CipherText length: ${payload.secretBox!.cipherText.length}');
         print(
             '  MAC: ${payload.mac != null ? bytesToHex(payload.mac!.bytes) : "null"}');
-        print(
-            '  Explicit nonce from vector: ${vector.nonce != null ? vector.nonce : "null"}');
+        print('  Explicit nonce from vector: ${vector.nonce ?? "null"}');
 
         // Act
         try {

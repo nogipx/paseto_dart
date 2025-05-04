@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:paseto_dart/paseto_dart.dart';
-import 'package:cryptography/cryptography.dart';
 
 class Vectors {
   final Version version;
@@ -44,11 +43,6 @@ class Vectors {
     }
 
     return Vectors(name: name, local: local, public: public, version: version);
-  }
-
-  /// Загружает тестовые векторы для PASETO v3
-  static Vectors loadV3() {
-    return Vectors.fromJsonFile(Version.v3, 'test/vectors/v3.json');
   }
 
   /// Загружает тестовые векторы для PASETO v4

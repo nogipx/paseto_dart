@@ -1,3 +1,9 @@
+// SPDX-FileCopyrightText: 2025 Karim "nogipx" Mamatkazin <nogipx@gmail.com>
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+// ignore_for_file: constant_identifier_names
+
 import 'dart:typed_data';
 import 'package:paseto_dart/blake2/digest.dart';
 import 'package:paseto_dart/blake2/ufixnum.dart';

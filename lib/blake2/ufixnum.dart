@@ -1,4 +1,10 @@
+// SPDX-FileCopyrightText: 2025 Karim "nogipx" Mamatkazin <nogipx@gmail.com>
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 // See file LICENSE for more information.
+
+// ignore_for_file: constant_identifier_names
 
 import 'dart:typed_data';
 
@@ -281,7 +287,6 @@ class Register64 {
   }
 
   void sub(dynamic y) {
-    // TODO: optimize sub() ???
     sum(Register64(y)..neg());
   }
 

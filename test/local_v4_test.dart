@@ -2,8 +2,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:test/test.dart';
 import 'package:paseto_dart/paseto_dart.dart';
-import 'package:paseto_dart/models/_index.dart';
-import 'package:cryptography/cryptography.dart';
 
 void main() {
   group('PASETO v4.local', () {
@@ -43,7 +41,7 @@ void main() {
         footer: utf8.encode(footer),
       );
 
-      print('Созданный токен: ${await token.toString()}');
+      print('Созданный токен: ${token.toTokenString}');
 
       // Дешифруем сообщение
       final decrypted = await LocalV4.decrypt(
@@ -99,7 +97,7 @@ void main() {
         footer: utf8.encode(footer),
       );
 
-      print('Созданный токен для бинарных данных: ${await token.toString()}');
+      print('Созданный токен для бинарных данных: ${token.toTokenString}');
 
       // Дешифруем сообщение
       final decrypted = await LocalV4.decrypt(

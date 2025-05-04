@@ -7,7 +7,6 @@ import 'dart:typed_data';
 
 import 'package:equatable/equatable.dart';
 import 'package:meta/meta.dart';
-import 'package:cryptography/cryptography.dart';
 import 'package:paseto_dart/paseto_dart.dart';
 
 @immutable
@@ -58,12 +57,6 @@ final class Token extends Equatable {
     List<int>? implicit,
   }) async {
     switch (header.version) {
-      case Version.v3:
-        return LocalV3.decrypt(
-          this,
-          secretKey: secretKey,
-          implicit: implicit,
-        );
       case Version.v4:
         return LocalV4.decrypt(
           this,
@@ -95,12 +88,6 @@ final class Token extends Equatable {
     List<int>? implicit,
   }) async {
     switch (header.version) {
-      case Version.v3:
-        return PublicV3.verify(
-          this,
-          publicKey: publicKey,
-          implicit: implicit,
-        );
       case Version.v4:
         return PublicV4.verify(
           this,
@@ -178,10 +165,6 @@ final class Token extends Equatable {
 
     // Определяем длины nonce и MAC для версии
     switch (version) {
-      case Version.v3:
-        nonceLength = LocalV3.nonceLength;
-        macLength = LocalV3.macLength;
-        break;
       case Version.v4:
         nonceLength = LocalV4.nonceLength;
         macLength = LocalV4.macLength;
@@ -228,9 +211,6 @@ final class Token extends Equatable {
 
     // Определяем длину подписи для версии
     switch (version) {
-      case Version.v3:
-        signatureLength = PublicV3.signatureLength;
-        break;
       case Version.v4:
         signatureLength = PublicV4.signatureLength;
         break;
@@ -257,9 +237,7 @@ final class Token extends Equatable {
       header: header,
       payload: payload,
       footer: footer,
-      implicit: header.version == Version.v4 || header.version == Version.v3
-          ? []
-          : null,
+      implicit: header.version == Version.v4 ? [] : null,
     );
   }
 
@@ -275,9 +253,7 @@ final class Token extends Equatable {
         nonce: nonce,
       ),
       footer: footer,
-      implicit: header.version == Version.v4 || header.version == Version.v3
-          ? []
-          : null,
+      implicit: header.version == Version.v4 ? [] : null,
     );
   }
 
