@@ -5,8 +5,7 @@
 library;
 
 export 'utils/_index.dart';
-export 'models/_index.dart' hide Signature;
-export 'crypto/_index.dart';
+export 'models/_index.dart';
 
 // Version implementations
 export 'versions/local_v3.dart' show LocalV3;

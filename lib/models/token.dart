@@ -7,8 +7,8 @@ import 'dart:typed_data';
 
 import 'package:equatable/equatable.dart';
 import 'package:meta/meta.dart';
+import 'package:cryptography/cryptography.dart';
 import 'package:paseto_dart/paseto_dart.dart';
-import 'package:paseto_dart/versions/local_v4.dart' show MacWrapper;
 
 @immutable
 final class Token extends Equatable {
@@ -74,7 +74,7 @@ final class Token extends Equatable {
   }
 
   Future<Message> verifyPublicMessage({
-    required PublicKey publicKey,
+    required SimplePublicKey publicKey,
     List<int>? implicit,
   }) async {
     if (header.purpose != Purpose.public) {
@@ -82,13 +82,16 @@ final class Token extends Equatable {
     }
     return Message(
       header: header,
-      package: await _verifyPackage(publicKey: publicKey, implicit: implicit),
+      package: await _verifyPackage(
+        publicKey: publicKey,
+        implicit: implicit,
+      ),
       payload: payload,
     );
   }
 
   Future<Package> _verifyPackage({
-    required PublicKey publicKey,
+    required SimplePublicKey publicKey,
     List<int>? implicit,
   }) async {
     switch (header.version) {
@@ -211,9 +214,9 @@ final class Token extends Equatable {
       secretBox: SecretBox(
         cipherTextWithMac,
         nonce: nonce,
-        mac: MacWrapper(mac),
+        mac: Mac(mac),
       ),
-      nonce: MacWrapper(nonce),
+      nonce: Mac(nonce),
     );
   }
 

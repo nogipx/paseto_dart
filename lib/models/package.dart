@@ -5,10 +5,10 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:cryptography/cryptography.dart';
 import 'package:equatable/equatable.dart';
 import 'package:meta/meta.dart';
 import 'package:paseto_dart/paseto_dart.dart';
-import 'package:pointycastle/export.dart' as pc;
 
 @immutable
 final class Package extends Equatable {
@@ -57,22 +57,25 @@ final class Package extends Equatable {
   }
 
   Future<Mac> calculateNonce({
-    required SecretKeyData preNonce,
+    required SecretKey preNonce,
   }) async {
-    final pc.HMac hmac = pc.HMac(pc.SHA384Digest(), 128);
-    hmac.init(
-        pc.KeyParameter(Uint8List.fromList(await preNonce.extractBytes())));
+    // Создаем алгоритм HMAC-SHA-384
+    final hmac = Hmac(Sha384());
 
-    hmac.update(Uint8List.fromList(content), 0, content.length);
+    // Подготавливаем данные - объединяем контент и footer если он есть
+    final dataToMac = <int>[...content];
     final footer = this.footer;
     if (footer != null) {
-      hmac.update(Uint8List.fromList(footer), 0, footer.length);
+      dataToMac.addAll(footer);
     }
 
-    final nonceBytes = Uint8List(hmac.macSize);
-    hmac.doFinal(nonceBytes, 0);
+    // Вычисляем MAC
+    final mac = await hmac.calculateMac(
+      dataToMac,
+      secretKey: preNonce,
+    );
 
-    return Mac(nonceBytes.toList());
+    return mac;
   }
 
   @override

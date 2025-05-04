@@ -93,19 +93,19 @@ void publicTest(Vectors vectors) {
         final implicitBytes = vector.implicitAssertionBytes;
 
         // Act
-        final verified = await token.verifyPublicMessage(
+        // Используем стандартный метод verify
+        final verified = await PublicV4.verify(
+          token,
           publicKey: publicKey,
           implicit: implicitBytes,
         );
 
         // Assert
-        if (vector.payload != null) {
-          expect(utf8.decode(verified.package.content), vector.payload);
-        }
+        expect(utf8.decode(verified.content), vector.payload);
 
         // Проверяем совпадение footer
         if (vector.footer.isNotEmpty) {
-          expect(utf8.decode(verified.package.footer!), vector.footer);
+          expect(utf8.decode(verified.footer!), vector.footer);
         }
       });
     }
@@ -127,4 +127,9 @@ void publicTest(Vectors vectors) {
       });
     }
   });
+}
+
+// Вспомогательная функция для отображения байтов в шестнадцатеричном формате
+String bytesToHex(List<int> bytes) {
+  return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join('');
 }

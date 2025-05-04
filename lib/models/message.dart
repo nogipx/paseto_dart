@@ -66,7 +66,7 @@ final class Message extends Equatable {
   static Future<Message> signString(
     String content, {
     required Version version,
-    required KeyPair keyPair,
+    required SimpleKeyPair keyPair,
     List<int>? footer,
   }) {
     return _sign(
@@ -109,7 +109,7 @@ final class Message extends Equatable {
   static Future<Message> _sign(
     Package package, {
     required Version version,
-    required KeyPair keyPair,
+    required SimpleKeyPair keyPair,
   }) async {
     switch (version) {
       case Version.v3:
@@ -127,7 +127,7 @@ final class Message extends Equatable {
           package: package,
           payload: await PublicV4.sign(
             package,
-            secretKey: keyPair.privateKey,
+            keyPair: keyPair,
           ),
         );
     }

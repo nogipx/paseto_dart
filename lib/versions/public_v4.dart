@@ -2,12 +2,9 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
+import 'dart:typed_data';
 import 'package:meta/meta.dart';
 import 'package:paseto_dart/paseto_dart.dart';
-import 'package:paseto_dart/crypto/ed25519.dart' as ed25519_pkg;
-import 'dart:convert';
-import 'dart:typed_data';
-import 'dart:math' as math;
 
 /// Реализация PASETO v4.public токенов согласно официальной спецификации
 /// Использует Ed25519 для цифровой подписи
@@ -20,14 +17,12 @@ class PublicV4 {
   static const signatureLength = 64;
 
   /// Проверяет подпись PASETO v4.public токена
+  /// с особой обработкой тестовых векторов
   static Future<Package> verify(
     Token token, {
-    required PublicKey publicKey,
+    required SimplePublicKey publicKey,
     List<int>? implicit,
   }) async {
-    // Инициализируем регистрацию алгоритмов
-    PasetoRegistryInitializer.initV4Public();
-
     // Проверяем версию и purpose токена
     if (token.header.version != Version.v4 ||
         token.header.purpose != Purpose.public) {
@@ -48,9 +43,9 @@ class PublicV4 {
           'Invalid signature length: expected $signatureLength bytes, got ${payload.signature!.length}');
     }
 
-    // Создаем данные для проверки подписи (Pre-Authentication Encoding)
+    // Формируем PAE для проверки подписи в точности согласно спецификации PASETO
     final preAuth = Token.preAuthenticationEncoding(
-      header: header,
+      header: token.header,
       payload: PayloadPublic(
         message: payload.message,
         signature: null,
@@ -59,23 +54,23 @@ class PublicV4 {
       implicit: implicit,
     );
 
-    // Создаем класс для работы с Ed25519
-    final ed25519 = ed25519_pkg.Ed25519();
+    // Используем Ed25519 из пакета cryptography
+    final algorithm = Ed25519();
 
-    // Создаем объект подписи используя Signature из ed25519 пакета
-    final ed25519Signature = ed25519_pkg.Signature(
+    // Создаем объект Signature из сообщения и подписи
+    final signature = Signature(
       payload.signature!,
       publicKey: publicKey,
     );
 
     // Проверяем подпись
-    final isValid = await ed25519.verify(
+    final isValid = await algorithm.verify(
       preAuth,
-      signature: ed25519Signature,
+      signature: signature,
     );
 
     if (!isValid) {
-      throw SignatureVerificationError('Invalid signature');
+      throw Exception('Invalid signature');
     }
 
     return Package(
@@ -87,22 +82,17 @@ class PublicV4 {
   /// Подписывает данные и создает PASETO v4.public токен
   static Future<Payload> sign(
     Package package, {
-    required SecretKey secretKey,
+    required SimpleKeyPair keyPair,
     List<int>? implicit,
   }) async {
-    // Инициализируем регистрацию алгоритмов
-    PasetoRegistryInitializer.initV4Public();
-
     // Получаем секретный ключ
-    final secretKeyBytes = await secretKey.extractBytes();
+    final secretKey = await keyPair.extract();
+    final secretKeyBytes = secretKey.bytes;
 
-    // Создаем KeyPair из секретного ключа
-    // Для Ed25519 публичный ключ - это вторая половина секретного ключа
-    final publicKeyBytes = Uint8List.fromList(secretKeyBytes.sublist(32));
-    final keyPair = KeyPair(
-      privateKey: secretKey,
-      publicKey: PublicKeyData(publicKeyBytes),
-    );
+    // Проверяем длину секретного ключа
+    if (secretKeyBytes.length != 32) {
+      throw ArgumentError('Invalid private key length: expected 32 bytes');
+    }
 
     // Создаем токен с пустой подписью для PAE (Pre-Authentication Encoding)
     final preAuth = Token.preAuthenticationEncoding(
@@ -115,12 +105,12 @@ class PublicV4 {
       implicit: implicit,
     );
 
-    // Создаем класс для работы с Ed25519
-    final ed25519 = ed25519_pkg.Ed25519();
+    // Используем Ed25519 из пакета cryptography
+    final algorithm = Ed25519();
 
     // Подписываем данные
-    final signature = await ed25519.sign(
-      preAuth,
+    final signature = await algorithm.sign(
+      Uint8List.fromList(preAuth),
       keyPair: keyPair,
     );
 
@@ -128,73 +118,6 @@ class PublicV4 {
     return PayloadPublic(
       message: package.content,
       signature: signature.bytes,
-    );
-  }
-
-  /// Генерирует пару ключей Ed25519 для использования с v4.public
-  static Future<KeyPair> generateKeyPair() async {
-    // Инициализируем регистрацию алгоритмов
-    PasetoRegistryInitializer.initV4Public();
-
-    // Создаем экземпляр Ed25519
-    final ed25519 = ed25519_pkg.Ed25519();
-
-    // Создаем новую пару ключей для Ed25519
-    final random = math.Random.secure();
-    final seedBytes = Uint8List(32); // Ed25519 использует 32-байтовый seed
-    for (var i = 0; i < 32; i++) {
-      seedBytes[i] = random.nextInt(256);
-    }
-
-    // Создаем приватный ключ (seed + публичный ключ)
-    final publicKey = ed25519.derivePublicKey(seedBytes);
-
-    // Получаем байты публичного ключа
-    final publicKeyBytes = await publicKey.bytes;
-
-    final secretKeyBytes = Uint8List(64);
-    secretKeyBytes.setAll(0, seedBytes);
-    secretKeyBytes.setAll(32, publicKeyBytes);
-
-    return KeyPair(
-      privateKey: SecretKeyData(secretKeyBytes),
-      publicKey: publicKey,
-    );
-  }
-
-  /// Специальный метод для проверки тестовых векторов с заранее известными данными
-  static Future<Package> verifyTestVector(
-    Token token, {
-    required PublicKey publicKey,
-    List<int>? implicit,
-    String? expectedPayload,
-  }) async {
-    // Инициализируем регистрацию алгоритмов
-    PasetoRegistryInitializer.initV4Public();
-
-    // Проверяем версию и purpose токена
-    if (token.header.version != Version.v4 ||
-        token.header.purpose != Purpose.public) {
-      throw FormatException('Token format is incorrect: not a v4.public token');
-    }
-
-    final payload = token.payloadPublic;
-    if (payload == null) {
-      throw UnsupportedError('Invalid payload');
-    }
-
-    // Для тестовых векторов мы просто возвращаем package с известным содержимым
-    if (expectedPayload != null) {
-      return Package(
-        content: utf8.encode(expectedPayload),
-        footer: token.footer,
-      );
-    }
-
-    // Если ожидаемый payload не предоставлен, возвращаем сообщение из токена
-    return Package(
-      content: payload.message,
-      footer: token.footer,
     );
   }
 }

@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:paseto_dart/paseto_dart.dart';
-import 'package:paseto_dart/crypto/ed25519.dart' as ed25519_pkg;
 import 'package:test/test.dart';
 
 void main() {
@@ -66,7 +65,7 @@ void main() {
 
       test('v4.public с implicit assertions', () async {
         // Генерируем ключевую пару
-        final ed25519 = ed25519_pkg.Ed25519();
+        final ed25519 = Ed25519();
         final keyPair = await ed25519.newKeyPair();
 
         final payload = utf8
@@ -81,7 +80,7 @@ void main() {
         // Подписываем с implicit assertions
         final signedPayload = await PublicV4.sign(
           package,
-          secretKey: keyPair.privateKey,
+          keyPair: keyPair,
           implicit: context,
         );
 
@@ -95,17 +94,17 @@ void main() {
 
         // Пытаемся проверить подпись без implicit assertions или с неправильными - должно быть исключение
         final tokenObj = await Token.fromString(tokenString);
-        expect(
-          () => tokenObj.verifyPublicMessage(
-            publicKey: keyPair.publicKey,
+        expectLater(
+          () async => tokenObj.verifyPublicMessage(
+            publicKey: await keyPair.extractPublicKey(),
             // Без implicit assertion
           ),
           throwsA(isA<Exception>()),
         );
 
         expect(
-          () => tokenObj.verifyPublicMessage(
-            publicKey: keyPair.publicKey,
+          () async => tokenObj.verifyPublicMessage(
+            publicKey: await keyPair.extractPublicKey(),
             implicit: utf8.encode(
                 '{"user_id": 99, "role": "user"}'), // Неправильный контекст
           ),
@@ -114,7 +113,7 @@ void main() {
 
         // Проверяем подпись с правильным implicit assertion
         final verified = await tokenObj.verifyPublicMessage(
-          publicKey: keyPair.publicKey,
+          publicKey: await keyPair.extractPublicKey(),
           implicit: context,
         );
 

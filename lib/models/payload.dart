@@ -5,6 +5,7 @@
 import 'dart:convert';
 
 import 'package:meta/meta.dart';
+import 'package:cryptography/cryptography.dart';
 import 'package:paseto_dart/paseto_dart.dart';
 
 abstract interface class Payload {
