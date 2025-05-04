@@ -1,11 +1,9 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:paseto_dart/paseto_dart.dart';
 import 'package:test/test.dart';
 
-import 'test_utils.dart';
 import 'test_vectors.dart';
 
 void main() {

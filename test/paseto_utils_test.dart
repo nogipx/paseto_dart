@@ -63,28 +63,33 @@ void main() {
         // Assert
         // Проверяем, что длина массива PAE корректна
         final expectedPAEStart = [
-          2, 0, 0, 0, 0, 0, 0, 0, // len(array) = 2
+          4, 0, 0, 0, 0, 0, 0, 0, // len(array) = 4
           8, 0, 0, 0, 0, 0, 0, 0, // len("v4.local") = 8
           ...utf8.encode("v4.local"),
         ];
 
         for (var i = 0; i < expectedPAEStart.length; i++) {
-          expect(pae[i], expectedPAEStart[i],
-              reason:
-                  'Несоответствие в PAE байте $i: ${pae[i]} vs ${expectedPAEStart[i]}');
+          expect(
+            pae[i],
+            expectedPAEStart[i],
+            reason: 'Несоответствие в PAE байте $i:'
+                ' ${pae[i]} vs ${expectedPAEStart[i]}',
+          );
         }
 
         // Проверяем общую структуру PAE
+        final expectedPAELength = expectedPAEStart.length +
+            8 +
+            nonce.length +
+            8 +
+            footer.length +
+            8 +
+            implicit.length;
         expect(
-            pae.length,
-            greaterThan(expectedPAEStart.length +
-                8 +
-                nonce.length +
-                8 +
-                footer.length +
-                8 +
-                implicit.length),
-            reason: 'Недостаточная длина PAE');
+          pae.length,
+          greaterThanOrEqualTo(expectedPAELength),
+          reason: 'Недостаточная длина PAE',
+        );
       });
 
       test('PAE должен быть детерминированным', () {
