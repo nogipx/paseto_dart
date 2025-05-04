@@ -5,6 +5,7 @@
 import 'dart:typed_data';
 import 'package:meta/meta.dart';
 import 'package:paseto_dart/paseto_dart.dart';
+import 'dart:convert';
 
 /// Реализация PASETO v4.public токенов согласно официальной спецификации
 /// Использует Ed25519 для цифровой подписи
@@ -43,15 +44,29 @@ class PublicV4 {
           'Invalid signature length: expected $signatureLength bytes, got ${payload.signature!.length}');
     }
 
+    // Важно: для v4 используем пустой массив, если implicit не задан
+    final implicitBytes = implicit ?? [];
+
+    // Проверяем, что публичный ключ имеет правильный тип KeyPairType.ed25519
+    if (publicKey.type != KeyPairType.ed25519) {
+      throw ArgumentError('Public key must be of type KeyPairType.ed25519');
+    }
+
+    // Проверяем, что публичный ключ имеет правильную длину (32 байта)
+    if (publicKey.bytes.length != 32) {
+      throw ArgumentError('Public key must be 32 bytes');
+    }
+
     // Формируем PAE для проверки подписи в точности согласно спецификации PASETO
-    final preAuth = Token.preAuthenticationEncoding(
-      header: token.header,
-      payload: PayloadPublic(
-        message: payload.message,
-        signature: null,
-      ),
-      footer: token.footer,
-      implicit: implicit,
+    final headerString = "v4.public.";
+    final headerBytes = Uint8List.fromList(utf8.encode(headerString));
+
+    // Собираем компоненты PAE (Pre-Authentication Encoding)
+    final preAuth = _preAuthenticationEncoding(
+      headerBytes: headerBytes,
+      message: payload.message,
+      footer: token.footer ?? [],
+      implicit: implicitBytes,
     );
 
     // Используем Ed25519 из пакета cryptography
@@ -94,15 +109,19 @@ class PublicV4 {
       throw ArgumentError('Invalid private key length: expected 32 bytes');
     }
 
-    // Создаем токен с пустой подписью для PAE (Pre-Authentication Encoding)
-    final preAuth = Token.preAuthenticationEncoding(
-      header: header,
-      payload: PayloadPublic(
-        message: package.content,
-        signature: null,
-      ),
-      footer: package.footer,
-      implicit: implicit,
+    // Важно: для v4 используем пустой массив, если implicit не задан
+    final implicitBytes = implicit ?? [];
+
+    // Формируем PAE для подписи в точности согласно спецификации PASETO
+    final headerString = "v4.public.";
+    final headerBytes = Uint8List.fromList(utf8.encode(headerString));
+
+    // Собираем компоненты PAE (Pre-Authentication Encoding)
+    final preAuth = _preAuthenticationEncoding(
+      headerBytes: headerBytes,
+      message: package.content,
+      footer: package.footer ?? [],
+      implicit: implicitBytes,
     );
 
     // Используем Ed25519 из пакета cryptography
@@ -110,7 +129,7 @@ class PublicV4 {
 
     // Подписываем данные
     final signature = await algorithm.sign(
-      Uint8List.fromList(preAuth),
+      preAuth,
       keyPair: keyPair,
     );
 
@@ -119,5 +138,51 @@ class PublicV4 {
       message: package.content,
       signature: signature.bytes,
     );
+  }
+
+  /// Реализация PAE (Pre-Authentication Encoding) для v4.public согласно спецификации
+  static Uint8List _preAuthenticationEncoding({
+    required Uint8List headerBytes,
+    required List<int> message,
+    required List<int> footer,
+    required List<int> implicit,
+  }) {
+    // Реализуем PAE согласно спецификации PASETO
+    final result = <int>[];
+
+    // Количество компонентов в PAE (4 - header, message, footer, implicit assertions)
+    final componentCount = 4;
+
+    // Запись количества компонентов (8 байт, little-endian)
+    result.addAll(_int64LE(componentCount));
+
+    // Запись длины header (8 байт, little-endian) и самого header
+    result.addAll(_int64LE(headerBytes.length));
+    result.addAll(headerBytes);
+
+    // Запись длины message (8 байт, little-endian) и самого message
+    result.addAll(_int64LE(message.length));
+    result.addAll(message);
+
+    // Запись длины footer (8 байт, little-endian) и самого footer
+    result.addAll(_int64LE(footer.length));
+    result.addAll(footer);
+
+    // Запись длины implicit assertions (8 байт, little-endian) и самих implicit assertions
+    result.addAll(_int64LE(implicit.length));
+    result.addAll(implicit);
+
+    return Uint8List.fromList(result);
+  }
+
+  /// Преобразует 64-битное целое число в массив байт в формате little-endian
+  static List<int> _int64LE(int value) {
+    final bytes = Uint8List(8);
+    for (var i = 0; i < 8; i++) {
+      bytes[i] = (value >> (i * 8)) & 0xFF;
+    }
+    // Последний байт должен иметь MSB=0 (для 64-bit целых чисел)
+    bytes[7] &= 0x7F;
+    return bytes;
   }
 }

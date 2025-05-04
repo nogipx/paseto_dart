@@ -6,6 +6,7 @@ library;
 
 export 'utils/_index.dart';
 export 'models/_index.dart';
+export 'blake2/_index.dart';
 
 // Version implementations
 export 'versions/local_v3.dart' show LocalV3;

@@ -34,20 +34,36 @@ void localTest(Vectors vectors) {
         final token = await Token.fromString(vector.token);
         final implicitBytes = vector.implicitAssertionBytes;
 
+        // Дополнительный отладочный вывод
+        final payload = token.payloadLocal;
+        print('Vector ${vector.name}:');
+        print('  Token: ${vector.token}');
+        print('  Nonce: ${bytesToHex(payload!.nonce!.bytes)}');
+        print('  CipherText length: ${payload.secretBox!.cipherText.length}');
+        print(
+            '  MAC: ${payload.mac != null ? bytesToHex(payload.mac!.bytes) : "null"}');
+        print(
+            '  Explicit nonce from vector: ${vector.nonce != null ? vector.nonce : "null"}');
+
         // Act
-        final decrypted = await token.decryptLocalMessage(
-          secretKey: secretKey,
-          implicit: implicitBytes,
-        );
+        try {
+          final decrypted = await token.decryptLocalMessage(
+            secretKey: secretKey,
+            implicit: implicitBytes,
+          );
 
-        // Assert
-        if (vector.payload != null) {
-          expect(utf8.decode(decrypted.package.content), vector.payload);
-        }
+          // Assert
+          if (vector.payload != null) {
+            expect(utf8.decode(decrypted.package.content), vector.payload);
+          }
 
-        // Проверяем совпадение footer
-        if (vector.footer.isNotEmpty) {
-          expect(utf8.decode(decrypted.package.footer!), vector.footer);
+          // Проверяем совпадение footer
+          if (vector.footer.isNotEmpty) {
+            expect(utf8.decode(decrypted.package.footer!), vector.footer);
+          }
+        } catch (e) {
+          print('  Error: $e');
+          rethrow;
         }
       });
     }

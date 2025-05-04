@@ -207,16 +207,19 @@ final class Token extends Equatable {
     }
 
     // Для v4 MAC идет в конце шифротекста
+    final cipherText =
+        cipherTextWithMac.sublist(0, cipherTextWithMac.length - macLength);
     final mac = cipherTextWithMac.sublist(cipherTextWithMac.length - macLength);
 
     // Создаем payload
     return PayloadLocal(
       secretBox: SecretBox(
-        cipherTextWithMac,
+        cipherText,
         nonce: nonce,
-        mac: Mac(mac),
+        mac: Mac(Uint8List.fromList([])),
       ),
       nonce: Mac(nonce),
+      mac: Mac(mac),
     );
   }
 

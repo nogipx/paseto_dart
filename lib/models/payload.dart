@@ -22,7 +22,7 @@ final class PayloadLocal implements Payload {
 
   final SecretBox? secretBox;
   final Mac? nonce;
-  final Hash? mac;
+  final Mac? mac;
 
   @override
   String get toTokenString {
