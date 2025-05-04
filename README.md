@@ -1,6 +1,9 @@
 # paseto_dart
 
-Dart implementation of [PASETO](https://paseto.io) (Platform-Agnostic Security Tokens) — a modern cryptographically secure alternative to JWT.
+Dart unofficial implementation of [PASETO](https://paseto.io) (Platform-Agnostic Security Tokens) — a modern cryptographically secure alternative to JWT.
+
+> [!WARNING]
+> The [PASETO RFC](https://github.com/paseto-standard/paseto-rfc) is not yet approved, so the implementation may change in the future.
 
 ## What is PASETO
 
@@ -11,11 +14,6 @@ PASETO is a protocol for creating secure access tokens, developed in 2018 as an 
 - **Strict format specification** — minimizes implementation errors
 - **Modern cryptography** — uses ChaCha20-Poly1305, Ed25519, ECDSA, and other proven algorithms
 
-Example of a PASETO token:
-```
-v4.public.eyJleHAiOiIyMDIyLTAxLTAxVDAwOjAwOjAwKzAwOjAwIiwiaWF0IjoiMjAyMS0xMi0zMVQyMzo1OTo1OSswMDowMCIsInN1YiI6ImpvaG5kb2UiLCJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tIn03FSq9Vfr0WMUEubQxSgEJUPGRAdlfLsrfT_i1RPJjNUHZ6JpjuWuP4sSAHzLmD92h-ar5CEJj2V00Mj_GlEw
-```
-
 ## 🚀 Installation
 
 ```yaml
@@ -24,6 +22,9 @@ dependencies:
 ```
 
 ## 📋 Supported PASETO Versions
+
+> [!NOTE]
+> Please note that the v2 token type standard is expected to be deprecated in 2022, so new development should be done ideally on versions 3 or 4.
 
 | Version | Support | Description |
 |---------|---------|-------------|
@@ -220,18 +221,7 @@ if (tokenData['exp'] > currentTimestamp) {
 
 ## ⚙️ PASETO Implementations in Other Languages
 
-PASETO has implementations in many languages:
-
-- JavaScript/TypeScript: [paseto.js](https://github.com/panva/paseto)
-- PHP: [paragonie/paseto](https://github.com/paragonie/paseto)
-- Go: [o1egl/paseto](https://github.com/o1egl/paseto)
-- Rust: [brycx/pasetors](https://github.com/brycx/pasetors)
-- Python: [pyca/paseto](https://github.com/pyca/paseto)
-- Java: [paseto4j](https://github.com/atholbro/paseto4j)
-- C#/.NET: [dustinsoftware/paseto.net](https://github.com/dustinsoftware/paseto.net)
-- Ruby: [mguymon/paseto.rb](https://github.com/mguymon/paseto.rb)
-- Elixir: [mbramson/pigeon_paseto](https://github.com/mbramson/pigeon_paseto)
-- Kotlin: [paseto-kotlin](https://github.com/dstraube/paseto-kotlin)
+PASETO has implementations in many languages. You can find them on the [official website](https://paseto.io/implementations/).
 
 ## 📖 Useful Links
 
