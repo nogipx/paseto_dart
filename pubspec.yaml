@@ -12,7 +12,6 @@ dependencies:
   meta: ^1.16.0
   fixnum: ^1.1.1
   convert: ^3.1.2
-  blake2: ^0.1.2+1
 
 dev_dependencies:
   hex: ^0.2.0

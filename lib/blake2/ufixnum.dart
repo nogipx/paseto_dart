@@ -195,7 +195,8 @@ int rotr32(int x, int n) {
 /// Packs a 32 bit integer into a byte buffer. The [out] parameter can be an [Uint8List] or a
 /// [ByteData] if you will run it several times against the same buffer and want faster execution.
 void pack32(int x, dynamic out, int offset, Endian endian) {
-  assert((x >= 0) && (x <= _MASK_32));
+  // Обеспечиваем 32-битное значение даже для больших чисел
+  x = x & _MASK_32;
   if (out is! ByteData) {
     out =
         ByteData.view(out.buffer as ByteBuffer, out.offsetInBytes, out.length);

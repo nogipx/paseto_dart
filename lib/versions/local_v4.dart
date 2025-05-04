@@ -6,26 +6,10 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:cryptography/cryptography.dart';
 import 'package:paseto_dart/blake2/_index.dart' as blake2lib;
 import 'package:paseto_dart/models/_index.dart';
-import 'package:paseto_dart/utils/_index.dart';
 import 'package:paseto_dart/paseto_dart.dart';
-
-// Для совместимости тестов с векторами
-// Эта переменная будет использоваться только в тестах
-bool _useCompatibilityMode = false;
-
-/// Включает режим совместимости с тестовыми векторами
-/// Эта функция должна использоваться только в тестах!
-void enableCompatibilityMode() {
-  _useCompatibilityMode = true;
-}
-
-/// Отключает режим совместимости с тестовыми векторами
-void disableCompatibilityMode() {
-  _useCompatibilityMode = false;
-}
+import 'package:paseto_dart/chacha20/_index.dart';
 
 /// Класс для вспомогательных данных ключей шифрования.
 class _DerivedKeys {
@@ -119,9 +103,7 @@ class LocalV4 {
     ]);
 
     // 5. Вычисляем BLAKE2b-MAC с помощью ключа аутентификации
-    final macBytes = _useCompatibilityMode
-        ? _computeMacWithCompatibility(preAuth, authKey)
-        : _computeMac(preAuth, authKey);
+    final macBytes = _computeMac(preAuth, authKey);
     final mac = Mac(macBytes);
 
     // 6. Объединяем данные для токена
@@ -217,9 +199,7 @@ class LocalV4 {
     print('  PreAuth: ${_bytesToHex(preAuth)}');
 
     // 4. Вычисляем BLAKE2b-MAC и проверяем совпадение с MAC из токена
-    final calculatedMacBytes = _useCompatibilityMode
-        ? _computeMacWithCompatibility(preAuth, authKey)
-        : _computeMac(preAuth, authKey);
+    final calculatedMacBytes = _computeMac(preAuth, authKey);
     final calculatedMac = Mac(calculatedMacBytes);
 
     print('  Calculated MAC: ${_bytesToHex(calculatedMac.bytes)}');
@@ -231,35 +211,23 @@ class LocalV4 {
       );
     }
 
-    // 5. Дешифруем сообщение с помощью XChaCha20
-    // Важно: библиотека cryptography ожидает, что SecretBox будет содержать
-    // MAC, полученный при шифровании, а не вычисленный нами MAC.
-    // Используем Chacha20.poly1305Aead() с nonce размером 12 байт
-
-    // Создаем пустой MAC для обхода проверки в библиотеке
-    final emptyMac = Mac(Uint8List(32));
-
-    // Шифруем без использования MAC для проверки целостности (мы уже проверили MAC вручную)
-    final chacha20 = Chacha20.poly1305Aead();
-    final plaintext = await chacha20.decrypt(
-      SecretBox(
-        secretBox.cipherText,
-        nonce: Uint8List.fromList(
-            counterNonce.sublist(0, 12)), // Используем первые 12 байт nonce
-        mac: emptyMac,
-      ),
-      secretKey: SecretKey(encryptionKey),
-      aad: preAuth,
+    // 5. Дешифруем сообщение с помощью собственной реализации XChaCha20
+    // Поскольку мы уже проверили MAC, мы знаем, что сообщение целостно
+    // Используем нашу собственную реализацию XChaCha20 для дешифрования
+    final decryptedBytes = await _decryptCipherText(
+      secretBox.cipherText,
+      encryptionKey,
+      counterNonce,
     );
 
     // 6. Возвращаем дешифрованный пакет
     return Package(
-      content: plaintext,
+      content: decryptedBytes,
       footer: token.footer,
     );
   }
 
-  /// Преобразует массив байтов в шестнадцатеричную строку для отладки
+  /// Вспомогательная функция для отображения байтов в шестнадцатеричном формате
   static String _bytesToHex(List<int> bytes) {
     return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join('');
   }
@@ -383,18 +351,6 @@ class LocalV4 {
     return result == 0;
   }
 
-  /// Вычисляет MAC с помощью оригинальной библиотеки Blake2b
-  /// для совместимости с тестовыми векторами
-  static Uint8List _computeMacWithCompatibility(
-      List<int> preAuth, List<int> authKey) {
-    final blake2bMac = blake2lib.Blake2b(
-      key: Uint8List.fromList(authKey),
-      digestSize: 32, // 256 бит
-    );
-    final output = blake2bMac.process(Uint8List.fromList(preAuth));
-    return output.sublist(0, 32);
-  }
-
   /// Вычисляет MAC с помощью нашей улучшенной реализации Blake2b
   static Uint8List _computeMac(List<int> preAuth, List<int> authKey) {
     final blake2bMac = blake2lib.Blake2b(
@@ -402,6 +358,38 @@ class LocalV4 {
       digestSize: 32, // 256 бит
     );
     final output = blake2bMac.process(Uint8List.fromList(preAuth));
-    return output.sublist(0, 32);
+    return output;
+  }
+
+  /// Низкоуровневое дешифрование с помощью XChaCha20
+  static Future<Uint8List> _decryptCipherText(
+      List<int> cipherText, List<int> key, List<int> nonce) async {
+    try {
+      // Создаем экземпляр нашей реализации XChaCha20
+      final xchacha = XChaCha20();
+
+      // Преобразуем входные данные в правильный формат
+      final keyParam = KeyParameter(Uint8List.fromList(key));
+
+      // ВАЖНО: Для XChaCha20 нужен 24-байтный nonce
+      // Первые 24 байта из counterNonce (который имеет размер 24 байта)
+      final nonceBytes = Uint8List.fromList(nonce.sublist(0, 24));
+
+      // Инициализируем с ключом и nonce для дешифрования
+      xchacha.init(false, ParametersWithIV<KeyParameter>(keyParam, nonceBytes));
+
+      // Дешифруем данные
+      final decrypted = xchacha.process(Uint8List.fromList(cipherText));
+
+      // Для отладки
+      print(
+          '  Decrypted bytes (first 16): ${_bytesToHex(decrypted.sublist(0, min(16, decrypted.length)))}');
+      print('  Decrypted length: ${decrypted.length}');
+
+      return decrypted;
+    } catch (e) {
+      print('  Ошибка в _decryptCipherText: $e');
+      rethrow;
+    }
   }
 }
