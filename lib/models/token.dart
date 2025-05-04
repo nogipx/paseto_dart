@@ -58,11 +58,6 @@ final class Token extends Equatable {
     List<int>? implicit,
   }) async {
     switch (header.version) {
-      case Version.v2:
-        return LocalV2.decrypt(
-          this,
-          secretKey: secretKey,
-        );
       case Version.v3:
         return LocalV3.decrypt(
           this,
@@ -97,11 +92,6 @@ final class Token extends Equatable {
     List<int>? implicit,
   }) async {
     switch (header.version) {
-      case Version.v2:
-        return PublicV2.verify(
-          this,
-          publicKey: publicKey,
-        );
       case Version.v3:
         return PublicV3.verify(
           this,
@@ -185,10 +175,6 @@ final class Token extends Equatable {
 
     // Определяем длины nonce и MAC для версии
     switch (version) {
-      case Version.v2:
-        nonceLength = LocalV2.nonceLength;
-        macLength = LocalV2.macLength;
-        break;
       case Version.v3:
         nonceLength = LocalV3.nonceLength;
         macLength = LocalV3.macLength;
@@ -236,9 +222,6 @@ final class Token extends Equatable {
 
     // Определяем длину подписи для версии
     switch (version) {
-      case Version.v2:
-        signatureLength = PublicV2.signatureLength;
-        break;
       case Version.v3:
         signatureLength = PublicV3.signatureLength;
         break;

@@ -85,15 +85,6 @@ final class Message extends Equatable {
     required SecretKey secretKey,
   }) async {
     switch (version) {
-      case Version.v2:
-        return Message(
-          header: LocalV2.header,
-          package: package,
-          payload: await LocalV2.encrypt(
-            package,
-            secretKey: secretKey,
-          ),
-        );
       case Version.v3:
         return Message(
           header: LocalV3.header,
@@ -121,15 +112,6 @@ final class Message extends Equatable {
     required KeyPair keyPair,
   }) async {
     switch (version) {
-      case Version.v2:
-        return Message(
-          header: PublicV2.header,
-          package: package,
-          payload: await PublicV2.sign(
-            package,
-            keyPair: keyPair,
-          ),
-        );
       case Version.v3:
         return Message(
           header: PublicV3.header,

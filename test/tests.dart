@@ -11,8 +11,4 @@ void main() {
   // final vectorsV3 = Vectors.fromJsonFile(Version.v3, 'test/vectors/v3.json');
   // localTest(vectorsV3);
   // publicTest(vectorsV3);
-
-  // final vectorsV2 = Vectors.fromJsonFile(Version.v2, 'test/vectors/v2.json');
-  // localTest(vectorsV2);
-  // publicTest(vectorsV2);
 }

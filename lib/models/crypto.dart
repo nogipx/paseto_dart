@@ -279,9 +279,6 @@ extension SecretKeyValidation on SecretKey {
     final bytes = await extractBytes();
 
     switch (version) {
-      case Version.v2:
-        // v2.local использует XChaCha20-Poly1305, требует ключ длиной 32 байта
-        return bytes.length == 32;
       case Version.v3:
         // v3.local использует AES-256-CTR, требует ключ длиной 32 байта
         return bytes.length == 32;
@@ -310,9 +307,6 @@ extension KeyPairValidation on KeyPair {
     final type = this.type;
 
     switch (version) {
-      case Version.v2:
-        // v2.public использует Ed25519
-        return type == KeyPairType.ed25519;
       case Version.v3:
         // v3.public использует ECDSA P-384
         return type == KeyPairType.ecdsa384;
@@ -335,7 +329,6 @@ extension KeyPairValidation on KeyPair {
   /// Возвращает ожидаемый тип ключа для указанной версии.
   KeyPairType _getExpectedKeyType(Version version) {
     switch (version) {
-      case Version.v2:
       case Version.v4:
         return KeyPairType.ed25519;
       case Version.v3:
