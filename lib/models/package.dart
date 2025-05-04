@@ -11,7 +11,7 @@ import 'package:paseto_dart/paseto_dart.dart';
 import 'package:pointycastle/export.dart' as pc;
 
 @immutable
-class Package extends Equatable {
+final class Package extends Equatable {
   const Package({
     required this.content,
     this.footer,

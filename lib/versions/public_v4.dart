@@ -4,7 +4,7 @@
 
 import 'package:meta/meta.dart';
 import 'package:paseto_dart/paseto_dart.dart';
-import 'package:paseto_dart/common/ed25519.dart' as ed25519_pkg;
+import 'package:paseto_dart/crypto/ed25519.dart' as ed25519_pkg;
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:math' as math;

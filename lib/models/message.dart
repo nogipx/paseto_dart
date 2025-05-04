@@ -10,7 +10,7 @@ import 'package:paseto_dart/paseto_dart.dart';
 
 /// A signed or encrypted PASETO message.
 @immutable
-class Message extends Equatable {
+final class Message extends Equatable {
   const Message({
     required this.header,
     required this.package,

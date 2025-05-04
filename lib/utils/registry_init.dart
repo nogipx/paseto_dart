@@ -93,14 +93,4 @@ class PasetoRegistryInitializer {
 
     // Используем собственную реализацию Ed25519
   }
-
-  // Инициализирует все необходимые алгоритмы для PASETO
-  static void init() {
-    initV2Local();
-    initV3Local();
-    initV4Local();
-    initV2Public();
-    initV3Public();
-    initV4Public();
-  }
 }

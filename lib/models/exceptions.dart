@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 import 'package:meta/meta.dart';
-import 'package:paseto_dart/common/crypto_types.dart';
+import 'package:paseto_dart/models/crypto.dart';
 
 @immutable
 class PasetoException implements Exception {

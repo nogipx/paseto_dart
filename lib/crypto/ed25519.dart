@@ -6,7 +6,7 @@ import 'dart:typed_data';
 
 import 'package:ed25519_edwards/ed25519_edwards.dart' as ed;
 import 'package:meta/meta.dart';
-import 'package:paseto_dart/common/crypto_types.dart';
+import 'package:paseto_dart/models/crypto.dart';
 
 /// Полная реализация Ed25519 для PASETO, использующая библиотеку ed25519_edwards.
 ///

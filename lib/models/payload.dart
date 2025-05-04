@@ -7,12 +7,12 @@ import 'dart:convert';
 import 'package:meta/meta.dart';
 import 'package:paseto_dart/paseto_dart.dart';
 
-abstract class Payload {
+abstract interface class Payload {
   String get toTokenString;
 }
 
 @immutable
-class PayloadLocal implements Payload {
+final class PayloadLocal implements Payload {
   const PayloadLocal({
     required this.secretBox,
     required this.nonce,
@@ -43,7 +43,7 @@ class PayloadLocal implements Payload {
 }
 
 @immutable
-class PayloadPublic implements Payload {
+final class PayloadPublic implements Payload {
   const PayloadPublic({
     required this.message,
     this.signature,

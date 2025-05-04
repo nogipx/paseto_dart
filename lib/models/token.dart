@@ -11,7 +11,7 @@ import 'package:paseto_dart/paseto_dart.dart';
 import 'package:paseto_dart/versions/local_v4.dart' show MacWrapper;
 
 @immutable
-class Token extends Equatable {
+final class Token extends Equatable {
   const Token({
     required this.header,
     required this.payload,

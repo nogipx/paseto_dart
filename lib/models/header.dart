@@ -9,7 +9,7 @@ import 'package:meta/meta.dart';
 import 'package:paseto_dart/paseto_dart.dart';
 
 @immutable
-class Header extends Equatable {
+final class Header extends Equatable {
   const Header({
     required this.version,
     required this.purpose,

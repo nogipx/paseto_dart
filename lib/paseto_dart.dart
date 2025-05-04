@@ -5,21 +5,21 @@
 library;
 
 // Common exports
-export 'common/base64_ext.dart';
-export 'common/crypto_types.dart';
-export 'common/exceptions.dart' hide Signature;
-export 'common/header.dart';
-export 'common/message.dart';
-export 'common/package.dart';
-export 'common/payload.dart';
-export 'common/purpose.dart';
-export 'common/token.dart';
-export 'common/version.dart';
-export 'common/registry_init.dart';
+export 'utils/base64_ext.dart';
+export 'models/crypto.dart';
+export 'models/exceptions.dart' hide Signature;
+export 'models/header.dart';
+export 'models/message.dart';
+export 'models/package.dart';
+export 'models/payload.dart';
+export 'models/purpose.dart';
+export 'models/token.dart';
+export 'models/version.dart';
+export 'utils/registry_init.dart';
 
 // Implementations
-export 'common/chacha20_poly1305.dart';
-export 'common/ed25519.dart';
+export 'crypto/x_chacha20_poly1305.dart';
+export 'crypto/ed25519.dart';
 
 // Version implementations
 export 'versions/local_v2.dart' show LocalV2;

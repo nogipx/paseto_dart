@@ -6,8 +6,8 @@ import 'dart:math' as dart_math;
 import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
-import 'package:paseto_dart/common/crypto_types.dart';
-import 'package:paseto_dart/common/exceptions.dart';
+import 'package:paseto_dart/models/crypto.dart';
+import 'package:paseto_dart/models/exceptions.dart';
 import 'package:pointycastle/export.dart' as pc;
 
 /// Реализация XChaCha20-Poly1305 для AEAD шифрования согласно спецификации PASETO

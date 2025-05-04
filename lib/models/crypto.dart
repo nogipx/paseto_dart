@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 import 'package:meta/meta.dart';
-import 'package:paseto_dart/common/version.dart';
+import 'package:paseto_dart/models/version.dart';
 
 /// Типы ключевых пар PASETO
 enum KeyPairType {
