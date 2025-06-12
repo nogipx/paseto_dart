@@ -1,3 +1,5 @@
-## 1.0.0
+## 1.0.1
+- Fix for passing reference vectors tests
 
-* Initial release with Paseto v4 support.
+## 1.0.0
+- Initial release with Paseto v4 support.

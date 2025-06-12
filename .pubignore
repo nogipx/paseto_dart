@@ -13,3 +13,4 @@ LICENSES/
 bin/licensify
 test_cli/
 build/
+node_test/
