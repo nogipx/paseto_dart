@@ -58,7 +58,7 @@ class PublicV4 {
     }
 
     // Формируем PAE для проверки подписи в точности согласно спецификации PASETO
-    final headerString = "v4.public.";
+    final headerString = token.header.toTokenString;
     final headerBytes = Uint8List.fromList(utf8.encode(headerString));
 
     // Собираем компоненты PAE (Pre-Authentication Encoding)

@@ -8,6 +8,7 @@ import 'dart:typed_data';
 import 'package:equatable/equatable.dart';
 import 'package:meta/meta.dart';
 import 'package:paseto_dart/paseto_dart.dart';
+import 'package:paseto_dart/utils/pae.dart';
 
 @immutable
 final class Token extends Equatable {
@@ -161,13 +162,11 @@ final class Token extends Equatable {
 
   static Payload _decodeLocalPayload(List<int> bytes, Version version) {
     int nonceLength = 0;
-    int macLength = 0;
 
-    // Определяем длины nonce и MAC для версии
+    // Определяем длину nonce для версии
     switch (version) {
       case Version.v4:
         nonceLength = LocalV4.nonceLength;
-        macLength = LocalV4.macLength;
         break;
     }
 
@@ -177,32 +176,23 @@ final class Token extends Equatable {
           'Invalid token payload length for ${version.name}.local: expected at least $nonceLength bytes, got ${bytes.length}');
     }
 
-    // Извлекаем nonce
+    // ИСПРАВЛЕНО согласно официальной спецификации PASETO v4.local:
+    // payload format = nonce || ciphertext (БЕЗ MAC!)
+    // MAC вычисляется отдельно и НЕ хранится в payload
+
+    // Извлекаем nonce (первые 32 байта)
     final nonce = bytes.sublist(0, nonceLength);
 
-    // Извлекаем шифротекст с MAC
-    final cipherTextWithMac = bytes.sublist(nonceLength);
+    // Извлекаем ciphertext (все оставшиеся байты)
+    final ciphertext = bytes.sublist(nonceLength);
 
-    // В v4 всегда должен быть достаточный размер для MAC
-    if (cipherTextWithMac.length < macLength) {
-      throw FormatException(
-          'Invalid token ciphertext length for ${version.name}.local: expected at least $macLength bytes for MAC, got ${cipherTextWithMac.length}');
-    }
-
-    // Для v4 MAC идет в конце шифротекста
-    final cipherText =
-        cipherTextWithMac.sublist(0, cipherTextWithMac.length - macLength);
-    final mac = cipherTextWithMac.sublist(cipherTextWithMac.length - macLength);
-
-    // Создаем payload
     return PayloadLocal(
-      secretBox: SecretBox(
-        cipherText,
-        nonce: nonce,
-        mac: Mac(Uint8List.fromList([])),
-      ),
       nonce: Mac(nonce),
-      mac: Mac(mac),
+      secretBox: SecretBox(ciphertext,
+          nonce: Uint8List.fromList(nonce.sublist(0, 12)),
+          mac: Mac(Uint8List(0))),
+      mac: null, // MAC НЕ хранится в payload согласно спецификации!
+      payloadBytes: bytes, // Сохраняем исходные байты
     );
   }
 
@@ -276,50 +266,14 @@ final class Token extends Equatable {
     final footerComponent = Uint8List.fromList(footer ?? []);
     final implicitComponent = Uint8List.fromList(implicit ?? []);
 
-    // Формируем массив из 2 основных компонентов: сериализованный header и payload
-    final components = <Uint8List>[
+    final result = pae([
       headerComponent,
       payloadComponent,
       footerComponent,
       implicitComponent,
-    ];
+    ]);
 
-    return _preAuthenticationEncoding(components);
-  }
-
-  static Uint8List _preAuthenticationEncoding(List<Uint8List> components) {
-    final result = <int>[];
-    assert(components.length == 4);
-
-    result.addAll(_componentLengthToByteData(components.length));
-
-    for (var i = 0; i < components.length; i++) {
-      result.addAll(_componentLengthToByteData(components[i].length));
-      result.addAll(components[i]);
-    }
-
-    return Uint8List.fromList(result);
-  }
-
-  static Uint8List _componentLengthToByteData(int value) {
-    return _componentLengthBigIntToByteData(BigInt.from(value));
-  }
-
-  static Uint8List _componentLengthBigIntToByteData(BigInt bigInt) {
-    var value = bigInt.toUnsigned(64);
-    final buffer = StringBuffer();
-    for (var i = 0; i < 8; i++) {
-      if (i == 7) {
-        value = value & BigInt.from(127).toUnsigned(64);
-      }
-      buffer.write(
-        String.fromCharCode(
-          (value & BigInt.from(255).toUnsigned(64)).toInt(),
-        ),
-      );
-      value = value >> 8;
-    }
-    return Uint8List.fromList(utf8.encode(buffer.toString()));
+    return result;
   }
 
   @override

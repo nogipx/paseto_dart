@@ -8,6 +8,7 @@ import 'dart:typed_data';
 
 import 'package:paseto_dart/blake2/_index.dart' as blake2lib;
 import 'package:paseto_dart/paseto_dart.dart';
+import 'package:paseto_dart/utils/pae.dart';
 
 /// Класс для вспомогательных данных ключей шифрования.
 class _DerivedKeys {
@@ -91,37 +92,37 @@ class LocalV4 {
     final cipherText = xchacha.process(Uint8List.fromList(package.content));
 
     // 3. Подготавливаем данные для аутентификации (PAE)
-    final headerBytes = utf8.encode(header.toTokenString);
     final implicitBytes = implicit ?? <int>[];
     final footer = package.footer ?? <int>[];
 
     // 4. PAE(h, n, c, f, i)
-    final preAuth = _pae([
-      headerBytes, // h - заголовок
-      nonce, // n - nonce
-      cipherText, // c - шифротекст
-      footer, // f - футер (опциональный)
-      implicitBytes, // i - implicit assertion (опциональный)
+    final headerBytes = utf8.encode(header.toTokenString);
+    final preAuth = pae([
+      Uint8List.fromList(headerBytes), // h - заголовок
+      Uint8List.fromList(nonce), // n - nonce
+      Uint8List.fromList(cipherText), // c - шифротекст
+      Uint8List.fromList(footer), // f - футер (опциональный)
+      Uint8List.fromList(
+          implicitBytes), // i - implicit assertion (опциональный)
     ]);
 
     // 5. Вычисляем BLAKE2b-MAC с помощью ключа аутентификации
     final macBytes = _computeMac(preAuth, authKey);
-    final mac = Mac(macBytes);
 
-    // 6. Объединяем данные для токена
-    final secretBox = SecretBox(
-      cipherText,
-      nonce: nonceBytes,
-      mac: mac,
+    // 6. Создаем payload согласно спецификации PASETO v4.local
+    // payload = nonce || (ciphertext + MAC)
+    final cipherTextWithMac = Uint8List.fromList(cipherText + macBytes);
+    final payloadBytes = Uint8List.fromList(nonce + cipherTextWithMac);
+
+    // 7. Возвращаем PayloadLocal согласно спецификации PASETO v4.local
+    return PayloadLocal(
+      nonce: Mac(nonce), // Используем Mac для nonce
+      secretBox: SecretBox(cipherTextWithMac,
+          nonce: Uint8List.fromList(counterNonce.sublist(0, 12)),
+          mac: Mac(macBytes)),
+      mac: null, // MAC включен в secretBox.cipherText
+      payloadBytes: payloadBytes, // Сохраняем сырые байты payload
     );
-
-    final payload = PayloadLocal(
-      nonce: Mac(nonce),
-      secretBox: secretBox,
-      mac: mac,
-    );
-
-    return payload;
   }
 
   /// Дешифрует PASETO v4.local токен.
@@ -161,10 +162,8 @@ class LocalV4 {
       throw FormatException('Шифротекст отсутствует в токене v4.local');
     }
 
-    final mac = payload.mac;
-    if (mac == null || mac.bytes.length != macLength) {
-      throw FormatException('Неверный формат MAC в токене v4.local');
-    }
+    // ИСПРАВЛЕНО: MAC НЕ извлекается из payload, а вычисляется отдельно
+    // согласно официальной спецификации PASETO v4.local
 
     // 1. Генерируем ключи шифрования (Ek) и аутентификации (Ak)
     final encKeys = await _deriveKeys(keyBytes, nonce.bytes);
@@ -173,149 +172,100 @@ class LocalV4 {
     final authKey = encKeys.authKey;
 
     // 2. Подготавливаем данные для проверки аутентификации
-    final headerBytes = utf8.encode(header.toTokenString);
     final implicitBytes = implicit ?? <int>[];
     final footer = token.footer ?? <int>[];
 
-    // 3. PAE(h, n, c, f, i)
-    final preAuth = _pae([
-      headerBytes, // h - заголовок
-      nonce.bytes, // n - nonce
-      secretBox.cipherText, // c - шифротекст
-      footer, // f - футер (опциональный)
-      implicitBytes, // i - implicit assertion (опциональный)
+    // 3. PAE(h, n, c, f, i) - c должен быть без MAC!
+    final headerBytes = utf8.encode(header.toTokenString);
+    final cipherTextForAuth = secretBox.cipherText.length >= 32
+        ? secretBox.cipherText.sublist(0, secretBox.cipherText.length - 32)
+        : secretBox.cipherText;
+    final preAuth = pae([
+      Uint8List.fromList(headerBytes), // h - заголовок
+      Uint8List.fromList(nonce.bytes), // n - nonce
+      Uint8List.fromList(cipherTextForAuth), // c - шифротекст БЕЗ MAC
+      Uint8List.fromList(footer), // f - футер (опциональный)
+      Uint8List.fromList(
+          implicitBytes), // i - implicit assertion (опциональный)
     ]);
 
-    // 4. Вычисляем BLAKE2b-MAC и проверяем совпадение с MAC из токена
+    // 4. Вычисляем BLAKE2b-MAC и извлекаем ожидаемый MAC из ciphertext
     final calculatedMacBytes = _computeMac(preAuth, authKey);
-    final calculatedMac = Mac(calculatedMacBytes);
 
-    // Сравниваем MAC с постоянным временем
-    if (!_constantTimeEquals(calculatedMac.bytes, mac.bytes)) {
-      throw SecretBoxAuthenticationError(
-        message: 'Сбой аутентификации токена v4.local: MAC недействителен',
-      );
+    // Извлекаем MAC из конца ciphertext (последние 32 байта)
+    if (secretBox.cipherText.length < 32) {
+      throw FormatException('Токен слишком короткий для содержания MAC');
     }
 
-    // 5. Дешифруем сообщение с помощью собственной реализации XChaCha20
+    final expectedMacBytes =
+        secretBox.cipherText.sublist(secretBox.cipherText.length - 32);
+
+    // Сравниваем MAC с постоянным временем
+    if (!_constantTimeEquals(calculatedMacBytes, expectedMacBytes)) {
+      throw Exception('Проверка аутентичности токена не прошла (неверный MAC)');
+    }
+
+    // 5. В официальных тестовых векторах, ciphertext содержит зашифрованные данные + MAC
+    // Последние 32 байта - это MAC, который нужно отделить
+    final cipherTextOnly = secretBox.cipherText.length >= 32
+        ? secretBox.cipherText.sublist(0, secretBox.cipherText.length - 32)
+        : secretBox.cipherText;
+
+    // 6. Дешифруем сообщение с помощью собственной реализации XChaCha20
     // Поскольку мы уже проверили MAC, мы знаем, что сообщение целостно
     // Используем нашу собственную реализацию XChaCha20 для дешифрования
-    final decryptedBytes = await _decryptCipherText(
-      secretBox.cipherText,
+    final decrypted = await _decryptCipherText(
+      cipherTextOnly,
       encryptionKey,
       counterNonce,
     );
 
-    // 6. Возвращаем дешифрованный пакет
+    // 7. Возвращаем дешифрованный пакет
     return Package(
-      content: decryptedBytes,
+      content: decrypted,
       footer: token.footer,
     );
   }
 
   /// Генерирует ключи для шифрования и аутентификации из основного ключа и nonce.
   static Future<_DerivedKeys> _deriveKeys(
-      List<int> key, List<int> nonce) async {
-    // Согласно спецификации PASETO v4, нам нужен:
-    // - ключ шифрования (32 байта)
-    // - counter nonce (24 байта)
-    // - ключ аутентификации (32 байта)
+    List<int> key,
+    List<int> nonce,
+  ) async {
+    // ИСПРАВЛЕНО: Точно согласно официальной спецификации PASETO v4
+    // Step 4: Split the key into an Encryption key (Ek) and Authentication key (Ak)
 
-    // Используем нашу реализацию Blake2b с поддержкой 64-байтного вывода
-
-    // 1. Генерируем ключ шифрования и nonce
-    // BLAKE2b(output=64bytes, key, 'paseto-encryption-key' || nonce)
-    // Используем размер 512 бит (64 байта), из которых берем:
-    // - первые 32 байта как ключ шифрования
-    // - следующие 24 байта как counter nonce
+    // 1. tmp = crypto_generichash(msg = "paseto-encryption-key" || n, key = key, length = 56)
     final encKeyDomain = utf8.encode(_encryptionKeyDomain);
-    final encInput = Uint8List(encKeyDomain.length + nonce.length);
-    encInput.setAll(0, encKeyDomain);
-    encInput.setAll(encKeyDomain.length, nonce);
+    final encInput = Uint8List.fromList(encKeyDomain + nonce);
 
-    // Используем нашу модифицированную библиотеку Blake2b
-    // с поддержкой 64-байтного вывода для одного вызова
     final blake2bEnc = blake2lib.Blake2b(
       key: Uint8List.fromList(key),
-      digestSize: 64, // 512 бит = 64 байта
+      digestSize: 56, // ТОЧНО как в спецификации
     );
-    final output = blake2bEnc.process(encInput);
+    final tmp = blake2bEnc.process(encInput);
 
-    // Разделяем 64-байтный вывод на нужные части
-    final encryptionKey =
-        output.sublist(0, 32); // 32 байта для ключа шифрования
-    final counterNonce = output.sublist(32, 56); // 24 байта для nonce
+    // 2. Ek = tmp[0:32] (первые 32 байта)
+    final encryptionKey = tmp.sublist(0, 32);
 
-    // 2. Генерируем ключ аутентификации (Ak)
-    // BLAKE2b(output=32bytes, key, 'paseto-auth-key-for-aead' || nonce)
+    // 3. n2 = tmp[32:] (оставшиеся 24 байта) - это counter nonce для XChaCha20
+    final counterNonce = tmp.sublist(32, 56); // tmp[32:] = последние 24 байта
+
+    // 4. Ak = crypto_generichash(msg = "paseto-auth-key-for-aead" || n, key = key, length = 32)
     final authKeyDomain = utf8.encode(_authKeyDomain);
-    final authInput = Uint8List(authKeyDomain.length + nonce.length);
-    authInput.setAll(0, authKeyDomain);
-    authInput.setAll(authKeyDomain.length, nonce);
+    final authInput = Uint8List.fromList(authKeyDomain + nonce);
 
-    // Вычисляем ключ аутентификации с помощью Blake2b
     final blake2bAuth = blake2lib.Blake2b(
       key: Uint8List.fromList(key),
-      digestSize: 32, // 256 бит = 32 байта
+      digestSize: 32, // ТОЧНО как в спецификации
     );
-    final authKeyData = blake2bAuth.process(authInput);
+    final authKey = blake2bAuth.process(authInput);
 
     return _DerivedKeys(
       encryptionKey: encryptionKey,
       counterNonce: counterNonce,
-      authKey: authKeyData,
+      authKey: authKey,
     );
-  }
-
-  /// Реализует Pre-Authentication Encoding (PAE) согласно спецификации PASETO.
-  ///
-  /// PAE упаковывает несколько частей данных в формат, который защищает от атак подмены.
-  /// Формат: LE64(count) || LE64(piece1_len) || piece1 || LE64(piece2_len) || piece2 || ...
-  static List<int> _pae(List<List<int>> pieces) {
-    // Начинаем с 8 байт для количества элементов
-    final count = pieces.length;
-    final countBytes = _le64(count);
-
-    // Вычисляем общий размер результата
-    var totalSize = 8; // 8 байт для count
-    for (final piece in pieces) {
-      totalSize += 8; // 8 байт для длины каждого piece
-      totalSize += piece.length; // длина самого piece
-    }
-
-    // Создаем буфер фиксированного размера для результата
-    final result = Uint8List(totalSize);
-    var offset = 0;
-
-    // Записываем количество элементов
-    for (var i = 0; i < 8; i++) {
-      result[offset++] = countBytes[i];
-    }
-
-    // Для каждого элемента записываем его длину и затем сам элемент
-    for (final piece in pieces) {
-      final lengthBytes = _le64(piece.length);
-
-      // Записываем длину элемента в формате LE64
-      for (var i = 0; i < 8; i++) {
-        result[offset++] = lengthBytes[i];
-      }
-
-      // Записываем данные самого элемента
-      for (var i = 0; i < piece.length; i++) {
-        result[offset++] = piece[i];
-      }
-    }
-
-    return result;
-  }
-
-  /// Преобразует целое число в массив байт в формате little-endian 64-bit.
-  static Uint8List _le64(int value) {
-    final result = Uint8List(8);
-    final byteData = ByteData.view(result.buffer);
-    byteData.setUint64(0, value, Endian.little);
-    return result;
   }
 
   /// Сравнивает два массива байт с постоянным временем.
@@ -336,7 +286,7 @@ class LocalV4 {
   static Uint8List _computeMac(List<int> preAuth, List<int> authKey) {
     final blake2bMac = blake2lib.Blake2b(
       key: Uint8List.fromList(authKey),
-      digestSize: 32, // 256 бит
+      digestSize: 32,
     );
     final output = blake2bMac.process(Uint8List.fromList(preAuth));
     return output;
@@ -344,34 +294,50 @@ class LocalV4 {
 
   /// Низкоуровневое дешифрование с помощью XChaCha20
   static Future<Uint8List> _decryptCipherText(
-      List<int> cipherText, List<int> key, List<int> nonce) async {
-    try {
-      // Создаем экземпляр нашей реализации XChaCha20
-      final xchacha = XChaCha20();
+    List<int> cipherText,
+    List<int> key,
+    List<int> nonce,
+  ) async {
+    // Создаем экземпляр нашей реализации XChaCha20
+    final xchacha = XChaCha20();
 
-      // Преобразуем входные данные в правильный формат
-      final keyParam = KeyParameter(Uint8List.fromList(key));
+    // Преобразуем входные данные в правильный формат
+    final keyParam = KeyParameter(Uint8List.fromList(key));
 
-      // ВАЖНО: Для XChaCha20 нужен 24-байтный nonce
-      // Используем все 24 байта из nonce
-      final nonceBytes = Uint8List.fromList(nonce.sublist(0, 24));
+    // ВАЖНО: Для XChaCha20 нужен 24-байтный nonce
+    // Используем все 24 байта из nonce
+    final nonceBytes = Uint8List.fromList(nonce.sublist(0, 24));
 
-      // Инициализируем с ключом и nonce для дешифрования (false = расшифровка)
-      xchacha.init(false, ParametersWithIV<KeyParameter>(keyParam, nonceBytes));
+    // Инициализируем с ключом и nonce для дешифрования (false = расшифровка)
+    xchacha.init(false, ParametersWithIV<KeyParameter>(keyParam, nonceBytes));
 
-      // Дешифруем данные
-      final decrypted = xchacha.process(Uint8List.fromList(cipherText));
+    // Дешифруем данные
+    final decrypted = xchacha.process(Uint8List.fromList(cipherText));
 
-      return decrypted;
-    } catch (e) {
-      // В релизной версии используем тихую обработку ошибок,
-      // для отладки это сообщение будет видно только в debug режиме
-      assert(() {
-        // ignore: avoid_print
-        print('Ошибка в _decryptCipherText: $e');
-        return true;
-      }());
-      rethrow;
-    }
+    return decrypted;
+  }
+
+  /// Вспомогательная функция для отображения байтов в hex формате
+  static String _bytesToHex(List<int> bytes) {
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join('');
+  }
+
+  /// ВРЕМЕННЫЙ МЕТОД ДЛЯ ОТЛАДКИ - убрать после тестирования
+  static Future<void> testDeriveKeys(List<int> key, List<int> nonce) async {
+    print('=== TESTING KEY DERIVATION ===');
+    print('Input Key: ${_bytesToHex(key)}');
+    print('Input Nonce: ${_bytesToHex(nonce)}');
+
+    final derived = await _deriveKeys(key, nonce);
+
+    print('Generated Ek:  ${_bytesToHex(derived.encryptionKey)}');
+    print('Generated CN:  ${_bytesToHex(derived.counterNonce)}');
+    print('Generated Ak:  ${_bytesToHex(derived.authKey)}');
+
+    print(
+        'Expected  Ek:  c32b8e1c522550c8854d5177eb2ca96acc2072e3ca58407e0ee2f6470e92e49f');
+    print('Expected  CN:  129a23d170eddce49867d4888d276390abf7e48e550feb7c');
+    print(
+        'Expected  Ak:  3d6d4c0504cbefdc54a562967ca276d0a99e0120cf154cc8624feb26da3a73e9');
   }
 }

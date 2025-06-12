@@ -372,6 +372,43 @@ class Blake2b extends BaseDigest implements Digest {
   @override
   int get byteLength => 128;
 
+  /// Удобный метод для синхронного хеширования данных.
+  ///
+  /// Выполняет полное хеширование входных данных за один вызов.
+  /// Эквивалентно созданию нового экземпляра, добавлению данных
+  /// и вызову doFinal.
+  ///
+  /// [data] - Данные для хеширования.
+  ///
+  /// Возвращает результат хеширования.
+  Uint8List hashSync(List<int> data) {
+    final inputData = data is Uint8List ? data : Uint8List.fromList(data);
+    return process(inputData);
+  }
+
+  /// Удобный метод для добавления данных в поток.
+  ///
+  /// Добавляет данные к текущему состоянию хеша.
+  /// Можно вызывать многократно для инкрементального хеширования.
+  ///
+  /// [data] - Данные для добавления к хешу.
+  void addSync(List<int> data) {
+    final inputData = data is Uint8List ? data : Uint8List.fromList(data);
+    update(inputData, 0, inputData.length);
+  }
+
+  /// Удобный метод для получения финального хеша.
+  ///
+  /// Завершает процесс хеширования и возвращает результат.
+  /// После вызова этого метода хеш сбрасывается в начальное состояние.
+  ///
+  /// Возвращает финальный дайджест.
+  Uint8List digestSync() {
+    final result = Uint8List(digestSize);
+    doFinal(result, 0);
+    return result;
+  }
+
   /// Возвращает инициализационный вектор BLAKE2b.
   ///
   /// Этот статический метод предоставляет доступ к стандартному

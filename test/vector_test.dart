@@ -58,16 +58,7 @@ void localTest(Vectors vectors) {
               final decodedContent = utf8.decode(decrypted.package.content);
               expect(decodedContent, vector.payload);
             } catch (e) {
-              print('  Ошибка декодирования UTF-8: $e');
-              // Декодировать не получилось, но тест все равно должен пройти,
-              // так как мы корректно получили данные - просто они не в формате UTF-8
-              print(
-                  '  Расшифрованные данные (hex): ${bytesToHex(decrypted.package.content)}');
-              print(
-                  '  Ожидаемый payload (hex): ${bytesToHex(utf8.encode(vector.payload!))}');
-
-              // Для отладки выводим значения
-              // Тест все равно проходит, так как мы расшифровали данные правильно
+              fail('  Ошибка декодирования UTF-8: $e');
             }
           }
 

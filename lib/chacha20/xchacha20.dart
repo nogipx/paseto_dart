@@ -48,9 +48,10 @@ class XChaCha20 extends ChaCha20 {
     _hchacha20(params.parameters!.key, hNonce, subKey);
 
     // Последние 8 байт nonce используются как обычный nonce для ChaCha20
-    // вместе с 4 байтами 0 в качестве счетчика блоков
-    var shortened = Uint8List(8);
-    shortened.setAll(0, iv.sublist(16, 24));
+    // Counter (4 байта 0) идет ПЕРЕД nonce согласно спецификации ChaCha20
+    var shortened = Uint8List(12); // ChaCha20 expects a 12-byte nonce
+    shortened.setAll(0, [0, 0, 0, 0]); // Counter в начале (4 байта 0)
+    shortened.setAll(4, iv.sublist(16)); // Последние 8 байт XChaCha20 nonce
 
     // Инициализируем базовый ChaCha20 с новым ключом и укороченным nonce
     super
@@ -64,6 +65,7 @@ class XChaCha20 extends ChaCha20 {
     // _ImmutableList не имеет свойства buffer, необходимого для unpack32
     final nonceBytes = Uint8List.fromList(nonce);
     final sigmaBytes = Uint8List.fromList(_sigma);
+    final keyBytes = Uint8List.fromList(key);
 
     // Инициализируем начальное состояние ChaCha20
     var state = List<int>.filled(16, 0, growable: false);
@@ -75,14 +77,14 @@ class XChaCha20 extends ChaCha20 {
     state[3] = unpack32(sigmaBytes, 12, Endian.little);
 
     // Key
-    state[4] = unpack32(key, 0, Endian.little);
-    state[5] = unpack32(key, 4, Endian.little);
-    state[6] = unpack32(key, 8, Endian.little);
-    state[7] = unpack32(key, 12, Endian.little);
-    state[8] = unpack32(key, 16, Endian.little);
-    state[9] = unpack32(key, 20, Endian.little);
-    state[10] = unpack32(key, 24, Endian.little);
-    state[11] = unpack32(key, 28, Endian.little);
+    state[4] = unpack32(keyBytes, 0, Endian.little);
+    state[5] = unpack32(keyBytes, 4, Endian.little);
+    state[6] = unpack32(keyBytes, 8, Endian.little);
+    state[7] = unpack32(keyBytes, 12, Endian.little);
+    state[8] = unpack32(keyBytes, 16, Endian.little);
+    state[9] = unpack32(keyBytes, 20, Endian.little);
+    state[10] = unpack32(keyBytes, 24, Endian.little);
+    state[11] = unpack32(keyBytes, 28, Endian.little);
 
     // Nonce (16 bytes)
     state[12] = unpack32(nonceBytes, 0, Endian.little);

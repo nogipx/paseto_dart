@@ -17,14 +17,22 @@ final class PayloadLocal implements Payload {
     required this.secretBox,
     required this.nonce,
     this.mac,
+    this.payloadBytes, // Добавляем поддержку raw payload bytes
   });
 
   final SecretBox? secretBox;
   final Mac? nonce;
   final Mac? mac;
+  final List<int>? payloadBytes; // Новое поле для raw payload bytes
 
   @override
   String get toTokenString {
+    // Если есть payloadBytes, используем их напрямую (соответствует спецификации PASETO)
+    if (payloadBytes != null) {
+      return SafeBase64.encode(payloadBytes!);
+    }
+
+    // Иначе собираем из компонентов (для обратной совместимости)
     var result = List<int>.empty(growable: true);
     final nonce = this.nonce;
     if (nonce != null) {
