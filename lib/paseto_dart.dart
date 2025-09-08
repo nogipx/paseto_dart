@@ -7,6 +7,7 @@ library;
 export 'blake2/_index.dart';
 export 'chacha20/_index.dart';
 export 'models/_index.dart';
+export 'paserk/_index.dart';
 export 'utils/_index.dart';
 
 // Version implementations
