@@ -15,7 +15,7 @@ class K4SecretPw extends PaserkKey {
   static const int saltLength = 16;
   static const int nonceLength = 24;
   static const int tagLength = 32;
-  static const int defaultMemoryCost = 256 * 1024 * 1024; // 256 MiB
+  static const int defaultMemoryCost = 64 * 1024 * 1024; // 64 MiB
   static const int defaultTimeCost = 3;
   static const int defaultParallelism = 1;
 
