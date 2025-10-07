@@ -8,9 +8,14 @@ abstract class PaserkKey {
   static const String k4SecretPrefix = 'k4.secret.';
   static const String k4LocalWrapPrefix = 'k4.local-wrap.';
   static const String k4SecretWrapPrefix = 'k4.secret-wrap.';
+  static const String k4LocalWrapPiePrefix = 'k4.local-wrap.pie.';
+  static const String k4SecretWrapPiePrefix = 'k4.secret-wrap.pie.';
+  static const String k4LocalPwPrefix = 'k4.local-pw.';
+  static const String k4SecretPwPrefix = 'k4.secret-pw.';
   static const String k4LidPrefix = 'k4.lid.';
   static const String k4PidPrefix = 'k4.pid.';
   static const String k4SidPrefix = 'k4.sid.';
+  static const String k4SealPrefix = 'k4.seal.';
 
   final Uint8List rawBytes;
   final String prefix;

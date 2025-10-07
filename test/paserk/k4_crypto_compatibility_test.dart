@@ -13,7 +13,7 @@ void main() {
   group('PASERK Crypto Implementation Tests', () {
     test('XChaCha20 compatibility with LocalV4', () async {
       final vector = k4TestVectors['k4.local']!;
-      final keyBytes = hexToBytes(vector['key']!);
+      final keyBytes = hexToBytes(expectString(vector, 'key'));
 
       // Создаем тестовые данные
       final data = Uint8List.fromList([1, 2, 3, 4, 5]);
@@ -40,7 +40,7 @@ void main() {
 
     test('BLAKE2b compatibility with LocalV4', () {
       final vector = k4TestVectors['k4.local']!;
-      final keyBytes = hexToBytes(vector['key']!);
+      final keyBytes = hexToBytes(expectString(vector, 'key'));
 
       final data = Uint8List.fromList([1, 2, 3, 4, 5]);
 
@@ -66,22 +66,21 @@ void main() {
 
     test('Key wrapping domain separation compatibility', () async {
       final vector = k4TestVectors['k4.local-wrap']!;
-      final keyBytes = hexToBytes(vector['unwrapped']!);
-      final password = vector['password']!;
+      final keyBytes = hexToBytes(expectString(vector, 'unwrapped'));
+      final wrappingBytes = hexToBytes(expectString(vector, 'wrapping'));
       final key = K4LocalKey(keyBytes);
+      final wrappingKey = K4LocalKey(wrappingBytes);
 
       // Делаем wrapping с тем же паролем дважды
-      final wrapped1 = await K4LocalWrap.wrap(key, password);
-      final wrapped2 = await K4LocalWrap.wrap(key, password);
+      final wrapped1 = K4LocalWrap.wrap(key, wrappingKey);
+      final wrapped2 = K4LocalWrap.wrap(key, wrappingKey);
 
       // Проверяем, что каждый раз получается разный результат из-за случайной соли
       expect(wrapped1.toString(), isNot(equals(wrapped2.toString())));
 
       // Но при этом оба варианта можно успешно расшифровать
-      final unwrapped1 =
-          await K4LocalWrap.unwrap(wrapped1.toString(), password);
-      final unwrapped2 =
-          await K4LocalWrap.unwrap(wrapped2.toString(), password);
+      final unwrapped1 = K4LocalWrap.unwrap(wrapped1.toString(), wrappingKey);
+      final unwrapped2 = K4LocalWrap.unwrap(wrapped2.toString(), wrappingKey);
 
       expect(unwrapped1.rawBytes, equals(key.rawBytes));
       expect(unwrapped2.rawBytes, equals(key.rawBytes));

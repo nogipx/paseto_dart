@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:paseto_dart/paserk/k4_lid.dart';
 import 'package:paseto_dart/paserk/k4_local.dart';
 import 'package:paseto_dart/paserk/k4_local_wrap.dart';
@@ -29,27 +31,29 @@ void main() {
       expect(key.toString(), equals(testKey));
     });
 
-    test('k4.local-wrap test', () async {
+    test('k4.local-wrap test', () {
       final localKey = K4LocalKey.fromString(
           'k4.local.cHFyc3R1dnd4eXp7fH1-f4CBgoOEhYaHiImKi4yNjo8');
-      final password = 'password123';
+      final wrappingKey =
+          K4LocalKey(Uint8List.fromList(List.generate(32, (i) => i)));
 
-      final wrapped = await K4LocalWrap.wrap(localKey, password);
+      final wrapped = K4LocalWrap.wrap(localKey, wrappingKey);
       expect(wrapped.toString(), startsWith('k4.local-wrap.'));
 
-      final unwrapped = await K4LocalWrap.unwrap(wrapped.toString(), password);
+      final unwrapped = K4LocalWrap.unwrap(wrapped.toString(), wrappingKey);
       expect(unwrapped.toString(), equals(localKey.toString()));
     });
 
-    test('k4.secret-wrap test', () async {
+    test('k4.secret-wrap test', () {
       final secretKey = K4SecretKey.fromString(
           'k4.secret.tMv7Q99M4hByfZU-SnEzB_oZu32fhQQUONnhG5QqN3QeuduuvAR8A_1wYE4AcfCYfhayy3VyJcEfAEFdDiCxog');
-      final password = 'password123';
+      final wrappingKey =
+          K4LocalKey(Uint8List.fromList(List.generate(32, (i) => 255 - i)));
 
-      final wrapped = await K4SecretWrap.wrap(secretKey, password);
+      final wrapped = K4SecretWrap.wrap(secretKey, wrappingKey);
       expect(wrapped.toString(), startsWith('k4.secret-wrap.'));
 
-      final unwrapped = await K4SecretWrap.unwrap(wrapped.toString(), password);
+      final unwrapped = K4SecretWrap.unwrap(wrapped.toString(), wrappingKey);
       expect(unwrapped.toString(), equals(secretKey.toString()));
     });
 
