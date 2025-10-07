@@ -14,7 +14,8 @@ const Map<String, Map<String, Object>> k4TestVectors = {
   },
   'k4.public': {
     'name': 'k4.public derived from secret-2',
-    'public': '1ce56a48c82ff99162a14bc544612674e5d61fb9317e65d4055780fdbcb4dc35',
+    'public':
+        '1ce56a48c82ff99162a14bc544612674e5d61fb9317e65d4055780fdbcb4dc35',
     'paserk': 'k4.public.HOVqSMgv-ZFioUvFRGEmdOXWH7kxfmXUBVeA_by03DU',
   },
   'k4.local-wrap': {
@@ -59,7 +60,8 @@ const Map<String, Map<String, Object>> k4TestVectors = {
     'name': 'k4.seal-1',
     'localKey':
         '0000000000000000000000000000000000000000000000000000000000000000',
-    'public': 'b7715bd661458d928654d3e832f53ff5c9480542e0e3d4c9b032c768c7ce6023',
+    'public':
+        'b7715bd661458d928654d3e832f53ff5c9480542e0e3d4c9b032c768c7ce6023',
     'secret':
         '407796f4bc4b8184e9fe0c54b336822d34823092ad873d87ba14c3efb9db8c1db7715bd661458d928654d3e832f53ff5c9480542e0e3d4c9b032c768c7ce6023',
     'paserk':

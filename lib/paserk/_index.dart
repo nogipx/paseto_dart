@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 Karim "nogipx" Mamatkazin <nogipx@gmail.com>
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 export 'k4_lid.dart';
 export 'k4_local.dart';
 export 'k4_local_pw.dart';
