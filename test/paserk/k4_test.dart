@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:paseto_dart/paseto_dart.dart';
@@ -151,8 +150,7 @@ void main() {
         memoryCost: vector['memlimit'] as int,
         timeCost: vector['opslimit'] as int,
       );
-      final roundTrip =
-          await K4LocalPw.unwrap(wrapped.toString(), password);
+      final roundTrip = await K4LocalPw.unwrap(wrapped.toString(), password);
       expect(roundTrip.rawBytes, equals(originalKey.rawBytes));
 
       expect(
@@ -178,8 +176,7 @@ void main() {
         memoryCost: vector['memlimit'] as int,
         timeCost: vector['opslimit'] as int,
       );
-      final roundTrip =
-          await K4SecretPw.unwrap(wrapped.toString(), password);
+      final roundTrip = await K4SecretPw.unwrap(wrapped.toString(), password);
       expect(roundTrip.rawBytes, equals(originalKey.rawBytes));
 
       expect(
@@ -190,12 +187,9 @@ void main() {
 
     test('k4.seal sealing/unsealing', () async {
       final vector = k4TestVectors['k4.seal']!;
-      final localKey =
-          K4LocalKey(hexToBytes(expectString(vector, 'localKey')));
-      final publicKey =
-          K4PublicKey(hexToBytes(expectString(vector, 'public')));
-      final secretKey =
-          K4SecretKey(hexToBytes(expectString(vector, 'secret')));
+      final localKey = K4LocalKey(hexToBytes(expectString(vector, 'localKey')));
+      final publicKey = K4PublicKey(hexToBytes(expectString(vector, 'public')));
+      final secretKey = K4SecretKey(hexToBytes(expectString(vector, 'secret')));
 
       final unsealed =
           await K4Seal.unseal(expectString(vector, 'paserk'), secretKey);

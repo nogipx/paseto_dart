@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:cryptography/cryptography.dart';
 import 'package:paseto_dart/paseto_dart.dart';
 import 'package:test/test.dart';
 
