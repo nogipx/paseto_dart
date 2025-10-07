@@ -16,7 +16,7 @@ class K4LocalWrap extends PaserkKey {
   static const int tagLength = 32;
   static const _wrappingKeyDomain = 'paserk-local-wrap';
 
-  K4LocalWrap(Uint8List bytes) : super(bytes, PaserkKey.k4LocalWrapPrefix);
+  K4LocalWrap(Uint8List bytes) : super(bytes, PaserkKey.k4LocalWrapPiePrefix);
 
   static Future<K4LocalWrap> wrap(K4LocalKey key, String password) async {
     if (key.rawBytes.length != K4LocalKey.keyLength) {
@@ -48,8 +48,8 @@ class K4LocalWrap extends PaserkKey {
 
     // Вычисляем тег аутентификации
     final authKey = _deriveAuthKey(salt, utf8.encode(password));
-    final tag = _calculateTag(
-        PaserkKey.k4LocalWrapPrefix, salt, nonce, encrypted, authKey);
+    final tag = _calculateTag(PaserkKey.k4LocalWrapPiePrefix, salt, nonce,
+        encrypted, authKey);
 
     // Собираем финальный результат: tag + salt + nonce + encrypted
     final result =
@@ -67,12 +67,12 @@ class K4LocalWrap extends PaserkKey {
   }
 
   static Future<K4LocalKey> unwrap(String wrappedKey, String password) async {
-    if (!wrappedKey.startsWith(PaserkKey.k4LocalWrapPrefix)) {
+    if (!wrappedKey.startsWith(PaserkKey.k4LocalWrapPiePrefix)) {
       throw ArgumentError('Invalid k4.local-wrap format');
     }
 
     final data = Uint8List.fromList(SafeBase64.decode(
-        wrappedKey.substring(PaserkKey.k4LocalWrapPrefix.length)));
+        wrappedKey.substring(PaserkKey.k4LocalWrapPiePrefix.length)));
 
     if (data.length <
         tagLength + saltLength + nonceLength + K4LocalKey.keyLength) {
@@ -88,8 +88,8 @@ class K4LocalWrap extends PaserkKey {
 
     // Проверяем тег аутентификации
     final authKey = _deriveAuthKey(salt, utf8.encode(password));
-    final expectedTag = _calculateTag(
-        PaserkKey.k4LocalWrapPrefix, salt, nonce, encrypted, authKey);
+    final expectedTag = _calculateTag(PaserkKey.k4LocalWrapPiePrefix, salt,
+        nonce, encrypted, authKey);
 
     if (!_compareBytes(tag, expectedTag)) {
       throw ArgumentError('Invalid authentication tag');
@@ -158,6 +158,6 @@ class K4LocalWrap extends PaserkKey {
 
   @override
   String toString() {
-    return PaserkKey.k4LocalWrapPrefix + SafeBase64.encode(rawBytes);
+    return PaserkKey.k4LocalWrapPiePrefix + SafeBase64.encode(rawBytes);
   }
 }

@@ -16,7 +16,7 @@ class K4SecretWrap extends PaserkKey {
   static const int tagLength = 32;
   static const _wrappingKeyDomain = 'paserk-secret-wrap';
 
-  K4SecretWrap(Uint8List bytes) : super(bytes, PaserkKey.k4SecretWrapPrefix);
+  K4SecretWrap(Uint8List bytes) : super(bytes, PaserkKey.k4SecretWrapPiePrefix);
 
   static Future<K4SecretWrap> wrap(K4SecretKey key, String password) async {
     if (key.rawBytes.length != K4SecretKey.keyLength) {
@@ -48,8 +48,8 @@ class K4SecretWrap extends PaserkKey {
 
     // Вычисляем тег аутентификации
     final authKey = _deriveAuthKey(salt, utf8.encode(password));
-    final tag = _calculateTag(
-        PaserkKey.k4SecretWrapPrefix, salt, nonce, encrypted, authKey);
+    final tag = _calculateTag(PaserkKey.k4SecretWrapPiePrefix, salt, nonce,
+        encrypted, authKey);
 
     // Собираем финальный результат: tag + salt + nonce + encrypted
     final result =
@@ -67,12 +67,12 @@ class K4SecretWrap extends PaserkKey {
   }
 
   static Future<K4SecretKey> unwrap(String wrappedKey, String password) async {
-    if (!wrappedKey.startsWith(PaserkKey.k4SecretWrapPrefix)) {
+    if (!wrappedKey.startsWith(PaserkKey.k4SecretWrapPiePrefix)) {
       throw ArgumentError('Invalid k4.secret-wrap format');
     }
 
     final data = Uint8List.fromList(SafeBase64.decode(
-        wrappedKey.substring(PaserkKey.k4SecretWrapPrefix.length)));
+        wrappedKey.substring(PaserkKey.k4SecretWrapPiePrefix.length)));
 
     if (data.length <
         tagLength + saltLength + nonceLength + K4SecretKey.keyLength) {
@@ -88,8 +88,8 @@ class K4SecretWrap extends PaserkKey {
 
     // Проверяем тег аутентификации
     final authKey = _deriveAuthKey(salt, utf8.encode(password));
-    final expectedTag = _calculateTag(
-        PaserkKey.k4SecretWrapPrefix, salt, nonce, encrypted, authKey);
+    final expectedTag = _calculateTag(PaserkKey.k4SecretWrapPiePrefix, salt,
+        nonce, encrypted, authKey);
 
     if (!_compareBytes(tag, expectedTag)) {
       throw ArgumentError('Invalid authentication tag');
@@ -155,6 +155,6 @@ class K4SecretWrap extends PaserkKey {
 
   @override
   String toString() {
-    return PaserkKey.k4SecretWrapPrefix + SafeBase64.encode(rawBytes);
+    return PaserkKey.k4SecretWrapPiePrefix + SafeBase64.encode(rawBytes);
   }
 }
