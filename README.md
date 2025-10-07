@@ -137,3 +137,14 @@ PASETO имеет реализации на многих языках. Вы мо
 - [Официальный сайт](https://paseto.io/)
 - [Статья о PASETO от автора](https://paragonie.com/blog/2018/03/paseto-platform-agnostic-security-tokens-is-secure-alternative-jose-standards-jwt-etc)
 - [Сравнение с JWT](https://developer.okta.com/blog/2019/10/17/a-thorough-introduction-to-paseto)
+## 🧪 Тестирование
+
+Для запуска тестов требуется Dart SDK и Python 3.11+ с установленным пакетом `python-paseto`.
+
+```bash
+python -m pip install -r tool/python_requirements.txt
+dart pub get
+dart test
+```
+
+Интеграционные тесты взаимодействуют с библиотекой [python-paseto](https://github.com/purificant/python-paseto) и проверяют совместимость реализаций.
