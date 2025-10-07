@@ -11,143 +11,138 @@ import 'k4_local.dart';
 import 'paserk_key.dart';
 
 class K4LocalWrap extends PaserkKey {
-  static const int saltLength = 32;
-  static const int nonceLength = 24;
+  static const int nonceLength = 32;
   static const int tagLength = 32;
-  static const _wrappingKeyDomain = 'paserk-local-wrap';
+  static const int _splitLength = 56;
+  static const int _encDomain = 0x80;
+  static const int _authDomain = 0x81;
+
+  static final Uint8List _headerBytes =
+      Uint8List.fromList(utf8.encode(PaserkKey.k4LocalWrapPiePrefix));
 
   K4LocalWrap(Uint8List bytes) : super(bytes, PaserkKey.k4LocalWrapPiePrefix);
 
-  static Future<K4LocalWrap> wrap(K4LocalKey key, String password) async {
+  static K4LocalWrap wrap(K4LocalKey key, K4LocalKey wrappingKey) {
     if (key.rawBytes.length != K4LocalKey.keyLength) {
       throw ArgumentError('Key must be exactly ${K4LocalKey.keyLength} bytes');
     }
 
-    // Генерируем случайную соль
-    final random = Random.secure();
-    final salt = Uint8List(saltLength);
-    for (var i = 0; i < saltLength; i++) {
-      salt[i] = random.nextInt(256);
-    }
+    final nonce = _randomBytes(Random.secure(), nonceLength);
+    final derived = _deriveEncryptionMaterial(wrappingKey.rawBytes, nonce);
+    final encryptionKey = derived.sublist(0, 32);
+    final xchachaNonce = derived.sublist(32);
+    final authKey = _deriveAuthKey(wrappingKey.rawBytes, nonce);
 
-    // Генерируем ключи с помощью BLAKE2b
-    final wrappingKey = _deriveKey(
-        utf8.encode(_wrappingKeyDomain), salt, utf8.encode(password));
+    final cipher = XChaCha20();
+    cipher.init(
+      true,
+      ParametersWithIV<KeyParameter>(
+        KeyParameter(Uint8List.fromList(encryptionKey)),
+        Uint8List.fromList(xchachaNonce),
+      ),
+    );
+    final ciphertext = cipher.process(key.rawBytes);
 
-    // Генерируем XChaCha20 nonce
-    final nonce = Uint8List(nonceLength);
-    for (var i = 0; i < nonceLength; i++) {
-      nonce[i] = random.nextInt(256);
-    }
+    final tag = _calculateTag(nonce, ciphertext, authKey);
 
-    // Шифруем ключ
-    final xchacha = XChaCha20();
-    final keyParam = KeyParameter(wrappingKey);
-    xchacha.init(true, ParametersWithIV<KeyParameter>(keyParam, nonce));
-    final encrypted = xchacha.process(key.rawBytes);
+    final payload = Uint8List(tagLength + nonceLength + ciphertext.length)
+      ..setAll(0, tag)
+      ..setAll(tagLength, nonce)
+      ..setAll(tagLength + nonceLength, ciphertext);
 
-    // Вычисляем тег аутентификации
-    final authKey = _deriveAuthKey(salt, utf8.encode(password));
-    final tag = _calculateTag(PaserkKey.k4LocalWrapPiePrefix, salt, nonce,
-        encrypted, authKey);
-
-    // Собираем финальный результат: tag + salt + nonce + encrypted
-    final result =
-        Uint8List(tagLength + saltLength + nonceLength + encrypted.length);
-    var offset = 0;
-    result.setAll(offset, tag);
-    offset += tagLength;
-    result.setAll(offset, salt);
-    offset += saltLength;
-    result.setAll(offset, nonce);
-    offset += nonceLength;
-    result.setAll(offset, encrypted);
-
-    return K4LocalWrap(result);
+    return K4LocalWrap(payload);
   }
 
-  static Future<K4LocalKey> unwrap(String wrappedKey, String password) async {
+  static K4LocalKey unwrap(String wrappedKey, K4LocalKey wrappingKey) {
     if (!wrappedKey.startsWith(PaserkKey.k4LocalWrapPiePrefix)) {
       throw ArgumentError('Invalid k4.local-wrap format');
     }
 
-    final data = Uint8List.fromList(SafeBase64.decode(
-        wrappedKey.substring(PaserkKey.k4LocalWrapPiePrefix.length)));
+    final payload = Uint8List.fromList(
+      SafeBase64.decode(
+        wrappedKey.substring(PaserkKey.k4LocalWrapPiePrefix.length),
+      ),
+    );
 
-    if (data.length <
-        tagLength + saltLength + nonceLength + K4LocalKey.keyLength) {
+    if (payload.length < tagLength + nonceLength + K4LocalKey.keyLength) {
       throw ArgumentError('Invalid wrapped key length');
     }
 
-    // Разбираем компоненты
-    final tag = data.sublist(0, tagLength);
-    final salt = data.sublist(tagLength, tagLength + saltLength);
-    final nonce = data.sublist(
-        tagLength + saltLength, tagLength + saltLength + nonceLength);
-    final encrypted = data.sublist(tagLength + saltLength + nonceLength);
+    final tag = payload.sublist(0, tagLength);
+    final nonce = payload.sublist(tagLength, tagLength + nonceLength);
+    final ciphertext = payload.sublist(tagLength + nonceLength, payload.length);
 
-    // Проверяем тег аутентификации
-    final authKey = _deriveAuthKey(salt, utf8.encode(password));
-    final expectedTag = _calculateTag(PaserkKey.k4LocalWrapPiePrefix, salt,
-        nonce, encrypted, authKey);
-
-    if (!_compareBytes(tag, expectedTag)) {
+    final authKey = _deriveAuthKey(wrappingKey.rawBytes, nonce);
+    final expectedTag = _calculateTag(nonce, ciphertext, authKey);
+    if (!_constantTimeEquals(tag, expectedTag)) {
       throw ArgumentError('Invalid authentication tag');
     }
 
-    // Восстанавливаем ключ шифрования
-    final wrappingKey = _deriveKey(
-        utf8.encode(_wrappingKeyDomain), salt, utf8.encode(password));
+    final derived = _deriveEncryptionMaterial(wrappingKey.rawBytes, nonce);
+    final encryptionKey = derived.sublist(0, 32);
+    final xchachaNonce = derived.sublist(32);
 
-    // Расшифровываем
-    try {
-      final xchacha = XChaCha20();
-      final keyParam = KeyParameter(wrappingKey);
-      xchacha.init(false, ParametersWithIV<KeyParameter>(keyParam, nonce));
-      final decrypted = xchacha.process(encrypted);
+    final cipher = XChaCha20();
+    cipher.init(
+      false,
+      ParametersWithIV<KeyParameter>(
+        KeyParameter(Uint8List.fromList(encryptionKey)),
+        Uint8List.fromList(xchachaNonce),
+      ),
+    );
+    final decrypted = cipher.process(ciphertext);
 
-      if (decrypted.length != K4LocalKey.keyLength) {
-        throw ArgumentError('Decrypted key has invalid length');
-      }
-
-      return K4LocalKey(decrypted);
-    } catch (e) {
-      throw ArgumentError(
-          'Failed to unwrap key: invalid password or corrupted key');
+    if (decrypted.length != K4LocalKey.keyLength) {
+      throw ArgumentError('Decrypted key has invalid length');
     }
+
+    return K4LocalKey(decrypted);
   }
 
-  static Uint8List _deriveKey(
-      List<int> domain, List<int> salt, List<int> password) {
-    final blake2b = blake2lib.Blake2b(
-      digestSize: 32,
-      key: Uint8List.fromList(password),
+  static Uint8List _deriveEncryptionMaterial(
+    Uint8List wrappingKey,
+    List<int> nonce,
+  ) {
+    final data = Uint8List(1 + nonce.length)
+      ..[0] = _encDomain
+      ..setAll(1, nonce);
+    final blake = blake2lib.Blake2b(
+      digestSize: _splitLength,
+      key: wrappingKey,
     );
-    return blake2b.process(Uint8List.fromList([
-      ...domain,
-      ...salt,
-    ]));
+    return blake.process(data);
   }
 
-  static Uint8List _deriveAuthKey(List<int> salt, List<int> password) {
-    return _deriveKey(utf8.encode('paserk-local-wrap-auth'), salt, password);
-  }
-
-  static Uint8List _calculateTag(String header, List<int> salt, List<int> nonce,
-      List<int> encrypted, List<int> authKey) {
-    final blake2b = blake2lib.Blake2b(
+  static Uint8List _deriveAuthKey(Uint8List wrappingKey, List<int> nonce) {
+    final data = Uint8List(1 + nonce.length)
+      ..[0] = _authDomain
+      ..setAll(1, nonce);
+    final blake = blake2lib.Blake2b(
       digestSize: tagLength,
-      key: Uint8List.fromList(authKey),
+      key: wrappingKey,
     );
-    return blake2b.process(Uint8List.fromList([
-      ...utf8.encode(header),
-      ...salt,
-      ...nonce,
-      ...encrypted,
-    ]));
+    return blake.process(data);
   }
 
-  static bool _compareBytes(List<int> a, List<int> b) {
+  static Uint8List _calculateTag(
+    List<int> nonce,
+    List<int> ciphertext,
+    Uint8List authKey,
+  ) {
+    final message = Uint8List(
+      _headerBytes.length + nonce.length + ciphertext.length,
+    )
+      ..setAll(0, _headerBytes)
+      ..setAll(_headerBytes.length, nonce)
+      ..setAll(_headerBytes.length + nonce.length, ciphertext);
+    final blake = blake2lib.Blake2b(
+      digestSize: tagLength,
+      key: authKey,
+    );
+    return blake.process(message);
+  }
+
+  static bool _constantTimeEquals(List<int> a, List<int> b) {
     if (a.length != b.length) return false;
     var result = 0;
     for (var i = 0; i < a.length; i++) {
@@ -156,8 +151,11 @@ class K4LocalWrap extends PaserkKey {
     return result == 0;
   }
 
-  @override
-  String toString() {
-    return PaserkKey.k4LocalWrapPiePrefix + SafeBase64.encode(rawBytes);
+  static Uint8List _randomBytes(Random random, int length) {
+    final bytes = Uint8List(length);
+    for (var i = 0; i < length; i++) {
+      bytes[i] = random.nextInt(256);
+    }
+    return bytes;
   }
 }

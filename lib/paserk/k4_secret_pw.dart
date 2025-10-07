@@ -100,11 +100,18 @@ class K4SecretPw extends PaserkKey {
     }
 
     final data = Uint8List.fromList(
-      SafeBase64.decode(serialized.substring(PaserkKey.k4SecretPwPrefix.length)),
+      SafeBase64.decode(
+          serialized.substring(PaserkKey.k4SecretPwPrefix.length)),
     );
 
     if (data.length <
-        saltLength + 8 + 4 + 4 + nonceLength + K4SecretKey.keyLength + tagLength) {
+        saltLength +
+            8 +
+            4 +
+            4 +
+            nonceLength +
+            K4SecretKey.keyLength +
+            tagLength) {
       throw ArgumentError('Invalid wrapped key length');
     }
 
@@ -119,8 +126,7 @@ class K4SecretPw extends PaserkKey {
     offset += 4;
     final nonce = data.sublist(offset, offset + nonceLength);
     offset += nonceLength;
-    final encrypted =
-        data.sublist(offset, data.length - tagLength);
+    final encrypted = data.sublist(offset, data.length - tagLength);
     final tag = data.sublist(data.length - tagLength);
 
     if (memoryCost <= 0 || memoryCost % 1024 != 0) {
@@ -208,13 +214,7 @@ class K4SecretPw extends PaserkKey {
       key: Uint8List.fromList(authKey),
     );
     final message = Uint8List(
-      header.length +
-          saltLength +
-          8 +
-          4 +
-          4 +
-          nonceLength +
-          encrypted.length,
+      header.length + saltLength + 8 + 4 + 4 + nonceLength + encrypted.length,
     );
     var offset = 0;
     final headerBytes = utf8.encode(header);
@@ -237,14 +237,20 @@ class K4SecretPw extends PaserkKey {
   static Uint8List _encrypt(List<int> encKey, List<int> nonce, List<int> data) {
     final cipher = XChaCha20();
     final keyParam = KeyParameter(Uint8List.fromList(encKey));
-    cipher.init(true, ParametersWithIV<KeyParameter>(keyParam, nonce));
+    cipher.init(
+      true,
+      ParametersWithIV<KeyParameter>(keyParam, Uint8List.fromList(nonce)),
+    );
     return cipher.process(Uint8List.fromList(data));
   }
 
   static Uint8List _decrypt(List<int> encKey, List<int> nonce, List<int> data) {
     final cipher = XChaCha20();
     final keyParam = KeyParameter(Uint8List.fromList(encKey));
-    cipher.init(false, ParametersWithIV<KeyParameter>(keyParam, nonce));
+    cipher.init(
+      false,
+      ParametersWithIV<KeyParameter>(keyParam, Uint8List.fromList(nonce)),
+    );
     return cipher.process(Uint8List.fromList(data));
   }
 

@@ -46,10 +46,11 @@ class K4Seal extends PaserkKey {
     final encrypted = _encrypt(encKey, nonce, key.rawBytes);
     final tag = _computeSealTag(headerBytes, epkBytes, encrypted, authKey);
 
-    final payload = Uint8List(tagLength + ephemeralPublicKeyLength + encrypted.length)
-      ..setAll(0, tag)
-      ..setAll(tagLength, epkBytes)
-      ..setAll(tagLength + ephemeralPublicKeyLength, encrypted);
+    final payload =
+        Uint8List(tagLength + ephemeralPublicKeyLength + encrypted.length)
+          ..setAll(0, tag)
+          ..setAll(tagLength, epkBytes)
+          ..setAll(tagLength + ephemeralPublicKeyLength, encrypted);
 
     return K4Seal(payload);
   }
@@ -118,7 +119,8 @@ class K4Seal extends PaserkKey {
     List<int> xpk,
   ) {
     final blake2b = blake2lib.Blake2b(digestSize: 32);
-    final data = Uint8List(1 + header.length + sharedSecret.length + epk.length + xpk.length)
+    final data = Uint8List(
+        1 + header.length + sharedSecret.length + epk.length + xpk.length)
       ..[0] = prefix
       ..setAll(1, header)
       ..setAll(1 + header.length, sharedSecret)
@@ -155,14 +157,20 @@ class K4Seal extends PaserkKey {
   static Uint8List _encrypt(List<int> key, List<int> nonce, List<int> data) {
     final cipher = XChaCha20();
     final keyParam = KeyParameter(Uint8List.fromList(key));
-    cipher.init(true, ParametersWithIV<KeyParameter>(keyParam, nonce));
+    cipher.init(
+      true,
+      ParametersWithIV<KeyParameter>(keyParam, Uint8List.fromList(nonce)),
+    );
     return cipher.process(Uint8List.fromList(data));
   }
 
   static Uint8List _decrypt(List<int> key, List<int> nonce, List<int> data) {
     final cipher = XChaCha20();
     final keyParam = KeyParameter(Uint8List.fromList(key));
-    cipher.init(false, ParametersWithIV<KeyParameter>(keyParam, nonce));
+    cipher.init(
+      false,
+      ParametersWithIV<KeyParameter>(keyParam, Uint8List.fromList(nonce)),
+    );
     return cipher.process(Uint8List.fromList(data));
   }
 
@@ -170,7 +178,10 @@ class K4Seal extends PaserkKey {
     if (edPublic.length != 32) {
       throw ArgumentError('Ed25519 public key must be 32 bytes');
     }
-    final prime = BigInt.parse('7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed', 16);
+    final prime = BigInt.parse(
+      '7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed',
+      radix: 16,
+    );
     final mask = (BigInt.one << 255) - BigInt.one;
     final y = _decodeLittleEndian(edPublic) & mask;
     final numerator = (BigInt.one + y) % prime;
