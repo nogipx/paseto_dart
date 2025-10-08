@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2025 Karim "nogipx" Mamatkazin <nogipx@gmail.com>
 //
-// SPDX-License-Identifier: LGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import 'dart:typed_data';
+
 import 'package:paseto_dart/blake2/ufixnum.dart';
 import 'package:paseto_dart/chacha20/chacha20_pointycastle.dart';
 

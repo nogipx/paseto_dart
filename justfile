@@ -8,7 +8,7 @@ pubget:
 
 prepare:
     fvm dart format -l 80 .
-    reuse annotate -c "Karim \"nogipx\" Mamatkazin <nogipx@gmail.com>" -l "LGPL-3.0-or-later" --skip-unrecognised -r lib
+    reuse annotate -c "Karim \"nogipx\" Mamatkazin <nogipx@gmail.com>" -l "MIT" --skip-unrecognised -r lib
     fvm dart test --coverage=coverage
 
 coverage:

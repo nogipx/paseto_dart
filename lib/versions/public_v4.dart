@@ -1,11 +1,12 @@
 // SPDX-FileCopyrightText: 2025 Karim "nogipx" Mamatkazin <nogipx@gmail.com>
 //
-// SPDX-License-Identifier: LGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
+import 'dart:convert';
 import 'dart:typed_data';
+
 import 'package:meta/meta.dart';
 import 'package:paseto_dart/paseto_dart.dart';
-import 'dart:convert';
 
 /// Реализация PASETO v4.public токенов согласно официальной спецификации
 /// Использует Ed25519 для цифровой подписи

@@ -1,47 +1,40 @@
 # paseto_dart
 
-Dart неофициальная реализация [PASETO](https://paseto.io) (Platform-Agnostic Security Tokens) — современная криптографически защищенная альтернатива JWT.
+Unofficial [PASETO](https://paseto.io) (Platform-Agnostic Security Tokens) implementation for Dart. The package focuses on the modern v4 specification and provides first-class support for PASERK key serialization utilities.
 
-> [!WARNING]
-> Библиотека находится в стадии разработки и может содержать ошибки. Используйте на свой страх и риск.
+> **Status:** The library is under active development. While it already covers the full v4 feature set, breaking changes may still occur prior to a stable API freeze.
 
-## Что такое PASETO
+## What is PASETO?
 
-PASETO — это протокол для создания безопасных токенов доступа, разработанный в 2018 году как альтернатива JWT/JOSE, устраняющий его основные недостатки безопасности:
+PASETO is a cryptographic token format designed in 2018 as a safer alternative to JWT/JOSE. Key design principles include:
 
-- **Фиксированный набор алгоритмов** в каждой версии — устраняет уязвимости, связанные с выбором алгоритма
-- **Строгое разделение режимов** на `local` (шифрование) и `public` (подпись) — предотвращает путаницу
-- **Строгая спецификация формата** — минимизирует ошибки реализации
-- **Современная криптография** — использует XChaCha20 и BLAKE2b
+- **Fixed algorithms per version.** Each version specifies an explicit and limited list of algorithms, eliminating algorithm confusion attacks.
+- **Strict separation of `local` (symmetric encryption) and `public` (public-key signatures) modes.** The format enforces the correct cryptographic workflow for each use case.
+- **Well-defined token structure.** Parsers can reliably reject malformed payloads and avoid ambiguous encodings.
+- **Modern cryptography.** Version 4 relies on XChaCha20-Poly1305, Ed25519, and BLAKE2b.
 
-## 📋 Поддерживаемые версии PASETO
+## Supported PASETO and PASERK Versions
 
-> [!NOTE]
-> Данная библиотека поддерживает только PASETO v4, который является рекомендуемым для новых проектов.
+| Version | Support | Notes |
+|---------|---------|-------|
+| v1      | No      | Legacy (RSA + AES-CTR) |
+| v2      | No      | General-purpose (NaCl/libsodium) |
+| v3      | No      | NIST-compliant |
+| v4      | Yes     | Recommended for all new deployments |
+| PASERK  | Yes     | Complete v4 coverage, including PIE, password-based, and seal families |
 
-| Версия  | Поддержка | Описание |
-|---------|-----------|----------|
-| v1      | ❌        | Legacy (RSA + AES-CTR) - не поддерживается |
-| v2      | ❌        | General purpose (NaCl/libsodium) - не поддерживается |
-| v3      | ❌        | NIST-compliant - не поддерживается |
-| v4      | ✅        | Modern (рекомендуется) |
-| PASERK  | ✅        | PASETO формат представления ключей (v4, включая PIE, password-based и seal) |
+## PASERK Overview
 
-## 🧾 Что такое PASERK
+PASERK (Platform-Agnostic Serialized Keys) standardizes how PASETO keys are encoded, exchanged, and protected. This package implements the full PASERK v4 surface area:
 
-PASERK (Platform-Agnostic Serialized Keys) — официальный стандарт представления ключей для PASETO. Он описывает, как безопасно
-кодировать симметричные и асимметричные ключи, обмениваться ими и выполнять «обёртку» (wrapping) и «запечатывание» (sealing)
-секретов.
+- `k4.local` and `k4.secret` for base serialization of symmetric and secret keys.
+- `k4.local-wrap` and `k4.secret-wrap` for PIE-wrapped keys that can be stored encrypted at rest.
+- `k4.local-pw` and `k4.secret-pw` for password-based transformations powered by Argon2id and XChaCha20.
+- `k4.seal` for asymmetric sealing of keys to a recipient's public key.
 
-В библиотеке реализованы все типы PASERK v4:
+Argon2id defaults to `timeCost = 2/3`, `memoryCost = 64 MiB`, and `parallelism = 1`. Tune these parameters to balance security and resource usage in your environment.
 
-- `k4.local` и `k4.secret` — базовые сериализации симметричных и секретных ключей;
-- `k4.local-wrap` и `k4.secret-wrap` — PIE-обёртки поверх ключей, позволяющие хранить их в зашифрованном виде;
-- `k4.local-pw` и `k4.secret-pw` — password-based (Argon2id + XChaCha20) преобразования для безопасного хранения по паролю;
-- По умолчанию Argon2id запускается с параметрами `timeCost = 2/3`, `memoryCost = 64 MiB`, `parallelism = 1`, но их можно увеличить или уменьшить в зависимости от требований среды выполнения;
-- `k4.seal` — асимметричное запечатывание ключа на публичный ключ получателя.
-
-### Пример сериализации и восстановления ключа
+### Example: Serializing and Restoring a Key
 
 ```dart
 import 'package:paseto_dart/paseto_dart.dart';
@@ -49,136 +42,70 @@ import 'package:paseto_dart/paseto_dart.dart';
 void main() {
   final localKey = K4LocalKey.generate();
 
-  // Сериализация для хранения (k4.local)
+  // Serialize for storage
   final serialized = localKey.encode();
 
-  // Восстановление из строки
+  // Restore from string
   final restored = K4LocalKey.fromString(serialized);
 
   assert(restored.encode() == serialized);
 }
 ```
 
-Дополнительные примеры использования PIE-обёрток, password-based преобразований и `k4.seal` можно найти в тестах `test/paserk`.
+Additional PASERK examples (PIE wraps, password-based transformations, and `k4.seal`) are available in `test/paserk`.
 
-## 🔐 Быстрый старт
+## Getting Started
 
-Примеры использования библиотеки можно найти в [example](example).
-
-## 📚 Руководство по выбору типа токена
-
-| Тип токена | Когда использовать | Преимущества |
-|------------|-------------------|--------------|
-| **local**  | - Защита чувствительных данных<br> - Хранение секретов | - Данные зашифрованы<br> - Доступны только с ключом |
-| **public** | - Авторизация<br> - Аутентификация | - Проверка без секретного ключа<br> - Совместим с подходом JWT |
-
-## 🔑 Лучшие практики
-
-1. **Включайте срок действия** (`exp`) в токены авторизации
-2. **Всегда проверяйте версию токена** перед использованием
-3. **Храните ключи в безопасности**
-4. **Для токенов авторизации** используйте режим `public`
-5. **Для защиты данных** используйте режим `local`
-
-## ⚠️ Правильная реализация авторизации
-
-> **Важно!** Токены PASETO не предназначены для повторного использования в качестве долгосрочных токенов доступа.
-
-PASETO не имеет встроенной защиты от атак повторного воспроизведения (повторное использование токена). Если токен перехвачен, злоумышленник может использовать его до истечения срока действия.
-
-### Рекомендуемая архитектура авторизации
-
-1. **Используйте двухуровневую систему токенов**:
-   - Краткосрочные токены доступа PASETO (5-15 минут)
-   - Долгосрочные токены обновления (хранятся в базе данных сервера)
+Usage examples are available under the [example](example) directory. A typical public token issuance flow looks like this:
 
 ```dart
-// Пример создания токенов в двухуровневой системе авторизации
-Future<AuthTokens> createAuthTokens(User user) async {
-  // Краткосрочный токен доступа
-  final accessTokenData = {
-    'sub': user.id,
-    'exp': DateTime.now().add(Duration(minutes: 15)).millisecondsSinceEpoch ~/ 1000,
-    'jti': generateUniqueId(), // ID токена для защиты от повторного использования
-  };
-  
-  // Создаем пакет с данными
-  final package = Package(
-    content: utf8.encode(jsonEncode(accessTokenData)),
-  );
+final package = Package(content: utf8.encode(jsonEncode(payload)));
+final signedPayload = await PublicV4.sign(package, keyPair: keyPair);
+final token = Token(
+  header: PublicV4.header,
+  payload: signedPayload,
+  footer: null,
+);
 
-  // Подписываем с помощью PublicV4
-  final signedPayload = await PublicV4.sign(
-    package,
-    keyPair: authKeyPair,
-  );
-  
-  // Создаем токен
-  final token = Token(
-    header: PublicV4.header,
-    payload: signedPayload,
-    footer: null,
-  );
-  
-  // Генерируем токен обновления и сохраняем его в базе данных
-  final refreshToken = generateSecureRandomString();
-  await storeRefreshTokenInDatabase(user.id, refreshToken);
-  
-  return AuthTokens(
-    accessToken: token.toTokenString,
-    refreshToken: refreshToken,
-  );
-}
+final tokenString = token.toTokenString;
 ```
 
-2. **Добавьте проверку состояния на сервере**:
-   - Храните ID использованных токенов
-   - Поддерживайте белый/черный список активных сессий
-   - Реализуйте механизм немедленного отзыва токена
+## Choosing the Appropriate Token Type
 
-3. **Для критических операций используйте одноразовые токены**:
-   - Добавьте уникальный идентификатор (`jti`) в полезную нагрузку
-   - Проверяйте на сервере, был ли токен уже использован
-   - После использования добавляйте ID токена в список использованных токенов
+| Token type | When to use | Advantages |
+|------------|-------------|------------|
+| `local`    | Protecting sensitive data or secrets at rest | Payload is encrypted and requires the shared key |
+| `public`   | Authentication and authorization workflows | Verifiable by third parties without exposing the signing key |
 
-### Чего не следует делать
+## Operational Recommendations
 
-❌ **Не используйте PASETO как постоянные токены доступа**:
-```dart
-// НЕПРАВИЛЬНО: использование долгосрочного токена для всех запросов
-final userData = {
-  'sub': 'user123',
-  'exp': DateTime.now().add(Duration(days: 30)).millisecondsSinceEpoch ~/ 1000
-};
-```
+1. Include an expiration claim (`exp`) in every authorization token.
+2. Validate the token version before inspecting claims.
+3. Securely manage symmetric and private keys; rotate them regularly.
+4. Use `public` mode for access tokens and `local` mode for confidential data at rest.
+5. Introduce replay mitigation (e.g., `jti` claims with server-side tracking) for critical operations.
 
-❌ **Не полагайтесь только на срок действия токена для обеспечения безопасности**:
-```dart
-// НЕПРАВИЛЬНО: нет дополнительных проверок на стороне сервера
-if (tokenData['exp'] > currentTimestamp) {
-  // Предоставление доступа только на основе срока действия
-  grantAccess();
-}
-```
+## Building a Robust Authorization Flow
 
-## ⚙️ Реализации PASETO на других языках
+PASETO tokens do not include built-in replay protection. Adopt a layered architecture:
 
-PASETO имеет реализации на многих языках. Вы можете найти их на [официальном сайте](https://paseto.io/implementations/).
+1. **Issue short-lived access tokens** (5–15 minutes) alongside long-lived refresh tokens stored on the server.
+2. **Maintain server-side state** for issued token identifiers, session allowlists/denylists, and revocation triggers.
+3. **Use single-use tokens** for high-risk actions. Include a unique `jti`, validate it on the server, and mark it as consumed after use.
 
-## 📖 Полезные ссылки
+## Additional Resources
 
-- [Официальная спецификация PASETO](https://github.com/paseto-standard/paseto-spec)
-- [Официальный сайт](https://paseto.io/)
-- [Статья о PASETO от автора](https://paragonie.com/blog/2018/03/paseto-platform-agnostic-security-tokens-is-secure-alternative-jose-standards-jwt-etc)
-- [Сравнение с JWT](https://developer.okta.com/blog/2019/10/17/a-thorough-introduction-to-paseto)
-## 🧪 Тестирование
+- [Official PASETO specification](https://github.com/paseto-standard/paseto-spec)
+- [Official website](https://paseto.io/)
+- [Original PASETO announcement](https://paragonie.com/blog/2018/03/paseto-platform-agnostic-security-tokens-is-secure-alternative-jose-standards-jwt-etc)
+- [JWT vs PASETO comparison](https://developer.okta.com/blog/2019/10/17/a-thorough-introduction-to-paseto)
 
-Для запуска тестов требуется Dart SDK и Python 3.10 с установленным пакетом `python-paseto` (библиотека пока не поддерживает Python 3.11+).
+## Testing
+
+Integration tests rely on the [`python-paseto`](https://github.com/purificant/python-paseto) project to verify cross-language compatibility.
 
 ```bash
 python -m pip install -r tool/python_requirements.txt
 dart pub get
 dart test
 ```
-
-Интеграционные тесты взаимодействуют с библиотекой [python-paseto](https://github.com/purificant/python-paseto) и проверяют совместимость реализаций.
