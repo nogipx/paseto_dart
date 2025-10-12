@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:paseto_dart/paserk/k4_lid.dart';
 import 'package:paseto_dart/paserk/k4_local.dart';
 import 'package:paseto_dart/paserk/k4_local_pw.dart';
@@ -15,15 +13,7 @@ import 'package:test/test.dart';
 
 import '../../vectors.dart';
 
-String _passwordValue(String raw) {
-  final trimmed = raw.trim();
-  final isHex =
-      RegExp(r'^[0-9a-fA-F]+$').hasMatch(trimmed) && trimmed.length.isEven;
-  if (isHex) {
-    return utf8.decode(hexToUint8List(trimmed));
-  }
-  return raw;
-}
+String _passwordValue(String raw) => raw;
 
 void main() {
   final vectors = PaserkVectors.loadK4();
