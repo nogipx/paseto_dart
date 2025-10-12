@@ -16,6 +16,20 @@ class Vectors {
     required this.public,
   });
 
+  List<LocalVector> get localSuccess =>
+      local.where((vector) => !vector.expectFail).toList(growable: false);
+
+  List<LocalVector> get localFailures =>
+      local.where((vector) => vector.expectFail).toList(growable: false);
+
+  List<PublicVector> get publicSuccess => public
+      .where((vector) => !vector.expectFail && vector.hasPublicKey)
+      .toList(growable: false);
+
+  List<PublicVector> get publicFailures => public
+      .where((vector) => vector.expectFail && vector.hasPublicKey)
+      .toList(growable: false);
+
   factory Vectors.fromJsonFile(Version version, String filePath) {
     final file = File(filePath);
     final fileContent = file.readAsStringSync();
@@ -96,6 +110,8 @@ final class LocalVector {
     return nonce != null ? hexToUint8List(nonce!) : null;
   }
 
+  bool get hasPayload => payload != null;
+
   /// Создает Package из payload и footer
   Package get package {
     if (payload == null) {
@@ -110,6 +126,14 @@ final class LocalVector {
 
   Uint8List? get implicitAssertionBytes {
     return implicitAssertion.isNotEmpty ? utf8.encode(implicitAssertion) : null;
+  }
+
+  Uint8List? get footerBytes {
+    return footer.isNotEmpty ? utf8.encode(footer) : null;
+  }
+
+  Uint8List? get payloadBytes {
+    return payload != null ? utf8.encode(payload!) : null;
   }
 }
 
@@ -192,6 +216,14 @@ final class PublicVector {
 
   Uint8List? get implicitAssertionBytes {
     return implicitAssertion.isNotEmpty ? utf8.encode(implicitAssertion) : null;
+  }
+
+  Uint8List? get footerBytes {
+    return footer.isNotEmpty ? utf8.encode(footer) : null;
+  }
+
+  Uint8List? get payloadBytes {
+    return payload != null ? utf8.encode(payload!) : null;
   }
 }
 

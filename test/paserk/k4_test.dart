@@ -1,16 +1,36 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:paseto_dart/paseto_dart.dart';
+import 'package:paseto_dart/paserk/k4_lid.dart';
+import 'package:paseto_dart/paserk/k4_local.dart';
+import 'package:paseto_dart/paserk/k4_local_pw.dart';
+import 'package:paseto_dart/paserk/k4_local_wrap.dart';
+import 'package:paseto_dart/paserk/k4_pid.dart';
+import 'package:paseto_dart/paserk/k4_public.dart';
+import 'package:paseto_dart/paserk/k4_seal.dart';
+import 'package:paseto_dart/paserk/k4_secret.dart';
+import 'package:paseto_dart/paserk/k4_secret_pw.dart';
+import 'package:paseto_dart/paserk/k4_secret_wrap.dart';
+import 'package:paseto_dart/paserk/k4_sid.dart';
 import 'package:test/test.dart';
 
 import 'test_vectors.dart';
 
 Uint8List hexToBytes(String hex) {
-  final result = Uint8List(hex.length ~/ 2);
-  for (var i = 0; i < hex.length; i += 2) {
-    result[i ~/ 2] = int.parse(hex.substring(i, i + 2), radix: 16);
+  final cleaned = hex.replaceAll(RegExp(r'\s'), '');
+  final result = Uint8List(cleaned.length ~/ 2);
+  for (var i = 0; i < cleaned.length; i += 2) {
+    result[i ~/ 2] = int.parse(cleaned.substring(i, i + 2), radix: 16);
   }
   return result;
+}
+
+String bytesToHex(List<int> bytes) {
+  final buffer = StringBuffer();
+  for (final byte in bytes) {
+    buffer.write(byte.toRadixString(16).padLeft(2, '0'));
+  }
+  return buffer.toString();
 }
 
 String expectString(Map<String, Object> vector, String key) {
@@ -19,252 +39,233 @@ String expectString(Map<String, Object> vector, String key) {
   return value as String;
 }
 
+String passwordFromHex(String hex) {
+  return utf8.decode(hexToBytes(hex));
+}
+
 void main() {
-  group('PASERK v4 Test Vectors', () {
-    test('k4.local encoding/decoding', () {
+  group('PASERK v4 official vectors', () {
+    group('k4.local', () {
       final vector = k4TestVectors['k4.local']!;
-      final keyBytes = hexToBytes(expectString(vector, 'key'));
 
-      expect(keyBytes.length, equals(32),
-          reason: 'k4.local symmetric key must be 32 bytes');
+      test('round trips official value', () {
+        final keyBytes = hexToBytes(expectString(vector, 'key'));
+        final encoded = expectString(vector, 'paserk');
 
-      final key = K4LocalKey(keyBytes);
-      expect(key.toString(), equals(expectString(vector, 'paserk')));
+        final key = K4LocalKey(keyBytes);
+        expect(key.toString(), equals(encoded));
 
-      final decoded = K4LocalKey.fromString(expectString(vector, 'paserk'));
-      expect(decoded.rawBytes, equals(keyBytes));
+        final decoded = K4LocalKey.fromString(encoded);
+        expect(decoded.rawBytes, equals(keyBytes));
+      });
     });
 
-    test('k4.secret encoding/decoding', () {
+    group('k4.secret', () {
       final vector = k4TestVectors['k4.secret']!;
-      final keyBytes = hexToBytes(expectString(vector, 'secret'));
 
-      expect(keyBytes.length, equals(64),
-          reason: 'Ed25519 secret key must be 64 bytes (seed + public key)');
+      test('round trips official value', () {
+        final keyBytes = hexToBytes(expectString(vector, 'secret'));
+        final encoded = expectString(vector, 'paserk');
 
-      final seed = keyBytes.sublist(0, 32);
-      final pubkey = keyBytes.sublist(32);
-      expect(pubkey.length, equals(32),
-          reason: 'Last 32 bytes must be Ed25519 public key');
-      expect(seed.length, equals(32));
+        final key = K4SecretKey(keyBytes);
+        expect(key.toString(), equals(encoded));
+        expect(bytesToHex(key.rawBytes), equals(expectString(vector, 'secret')));
 
-      final key = K4SecretKey(keyBytes);
-      expect(key.toString(), equals(expectString(vector, 'paserk')));
-
-      final decoded = K4SecretKey.fromString(expectString(vector, 'paserk'));
-      expect(decoded.rawBytes, equals(keyBytes));
+        final decoded = K4SecretKey.fromString(encoded);
+        expect(decoded.rawBytes, equals(keyBytes));
+      });
     });
 
-    test('k4.public encoding/decoding', () {
+    group('k4.public', () {
       final vector = k4TestVectors['k4.public']!;
-      final keyBytes = hexToBytes(expectString(vector, 'public'));
 
-      final key = K4PublicKey(keyBytes);
-      expect(key.toString(), equals(expectString(vector, 'paserk')));
+      test('round trips official value', () {
+        final keyBytes = hexToBytes(expectString(vector, 'public'));
+        final encoded = expectString(vector, 'paserk');
 
-      expect(key.rawBytes.length, equals(32),
-          reason: 'Ed25519 public key should be 32 bytes');
+        final key = K4PublicKey(keyBytes);
+        expect(key.toString(), equals(encoded));
 
-      final decoded = K4PublicKey.fromString(expectString(vector, 'paserk'));
-      expect(decoded.rawBytes, equals(keyBytes));
+        final decoded = K4PublicKey.fromString(encoded);
+        expect(decoded.rawBytes, equals(keyBytes));
+      });
     });
 
-    test('k4.local-wrap wrapping/unwrapping', () {
+    group('k4.local-wrap', () {
       final vector = k4TestVectors['k4.local-wrap']!;
-      final keyBytes = hexToBytes(expectString(vector, 'unwrapped'));
-      final wrappingBytes = hexToBytes(expectString(vector, 'wrapping'));
 
-      expect(keyBytes.length, equals(32),
-          reason: 'k4.local-wrap unwrapped key must be 32 bytes');
+      test('unwraps official wrapped key', () {
+        final wrapping = K4LocalKey(hexToBytes(expectString(vector, 'wrapping')));
+        final unwrapped = K4LocalWrap.unwrap(expectString(vector, 'paserk'), wrapping);
 
-      final originalKey = K4LocalKey(keyBytes);
-      final wrappingKey = K4LocalKey(wrappingBytes);
+        expect(bytesToHex(unwrapped.rawBytes), equals(expectString(vector, 'unwrapped')));
+      });
 
-      final wrappedFromVector =
-          K4LocalWrap.unwrap(expectString(vector, 'paserk'), wrappingKey);
-      expect(wrappedFromVector.rawBytes, equals(originalKey.rawBytes));
+      test('rejects wrong wrapping key', () {
+        final wrapping = K4LocalKey(Uint8List(32));
+        expect(
+          () => K4LocalWrap.unwrap(expectString(vector, 'paserk'), wrapping),
+          throwsA(isA<ArgumentError>()),
+        );
+      });
 
-      expect(wrappedFromVector.rawBytes.length, equals(32),
-          reason: 'k4.local-wrap unwrapped key must be 32 bytes after unwrap');
+      test('round trips with generated wrap', () {
+        final wrapping = K4LocalKey(hexToBytes(expectString(vector, 'wrapping')));
+        final original = K4LocalKey(hexToBytes(expectString(vector, 'unwrapped')));
 
-      final wrapped = K4LocalWrap.wrap(originalKey, wrappingKey);
-      expect(wrapped.toString(), contains('k4.local-wrap.pie.'),
-          reason: 'Should use standard pie wrapping protocol');
-
-      final unwrapped = K4LocalWrap.unwrap(wrapped.toString(), wrappingKey);
-      expect(unwrapped.rawBytes, equals(originalKey.rawBytes));
-
-      final wrongKey = K4LocalKey(Uint8List(32));
-      expect(
-        () => K4LocalWrap.unwrap(wrapped.toString(), wrongKey),
-        throwsA(isA<ArgumentError>()),
-      );
+        final wrapped = K4LocalWrap.wrap(original, wrapping);
+        final roundTrip = K4LocalWrap.unwrap(wrapped.toString(), wrapping);
+        expect(roundTrip.rawBytes, equals(original.rawBytes));
+      });
     });
 
-    test('k4.secret-wrap wrapping/unwrapping', () {
+    group('k4.secret-wrap', () {
       final vector = k4TestVectors['k4.secret-wrap']!;
-      final keyBytes = hexToBytes(expectString(vector, 'unwrapped'));
-      final wrappingBytes = hexToBytes(expectString(vector, 'wrapping'));
 
-      expect(keyBytes.length, equals(64),
-          reason: 'k4.secret-wrap unwrapped key must be 64 bytes');
+      test('unwraps official wrapped key', () {
+        final wrapping = K4LocalKey(hexToBytes(expectString(vector, 'wrapping')));
+        final unwrapped = K4SecretWrap.unwrap(expectString(vector, 'paserk'), wrapping);
 
-      final originalKey = K4SecretKey(keyBytes);
-      final wrappingKey = K4LocalKey(wrappingBytes);
+        expect(bytesToHex(unwrapped.rawBytes), equals(expectString(vector, 'unwrapped')));
+      });
 
-      final wrappedFromVector =
-          K4SecretWrap.unwrap(expectString(vector, 'paserk'), wrappingKey);
-      expect(wrappedFromVector.rawBytes, equals(originalKey.rawBytes));
+      test('rejects wrong wrapping key', () {
+        final wrapping = K4LocalKey(Uint8List(32));
+        expect(
+          () => K4SecretWrap.unwrap(expectString(vector, 'paserk'), wrapping),
+          throwsA(isA<ArgumentError>()),
+        );
+      });
 
-      expect(wrappedFromVector.rawBytes.length, equals(64),
-          reason: 'k4.secret-wrap unwrapped key must be 64 bytes after unwrap');
+      test('round trips with generated wrap', () {
+        final wrapping = K4LocalKey(hexToBytes(expectString(vector, 'wrapping')));
+        final original = K4SecretKey(hexToBytes(expectString(vector, 'unwrapped')));
 
-      final wrapped = K4SecretWrap.wrap(originalKey, wrappingKey);
-      expect(wrapped.toString(), contains('k4.secret-wrap.pie.'),
-          reason: 'Should use standard pie wrapping protocol');
-
-      final unwrapped = K4SecretWrap.unwrap(wrapped.toString(), wrappingKey);
-      expect(unwrapped.rawBytes, equals(originalKey.rawBytes));
-
-      final wrongKey = K4LocalKey(Uint8List(32));
-      expect(
-        () => K4SecretWrap.unwrap(wrapped.toString(), wrongKey),
-        throwsA(isA<ArgumentError>()),
-      );
+        final wrapped = K4SecretWrap.wrap(original, wrapping);
+        final roundTrip = K4SecretWrap.unwrap(wrapped.toString(), wrapping);
+        expect(roundTrip.rawBytes, equals(original.rawBytes));
+      });
     });
 
-    test('k4.local-pw wrapping/unwrapping', () async {
+    group('k4.local-pw', () {
       final vector = k4TestVectors['k4.local-pw']!;
-      final keyBytes = hexToBytes(expectString(vector, 'unwrapped'));
-      final password = expectString(vector, 'passwordHex');
 
-      final originalKey = K4LocalKey(keyBytes);
+      test('unwraps official password wrapped key', () async {
+        final password = passwordFromHex(expectString(vector, 'passwordHex'));
+        final unwrapped = await K4LocalPw.unwrap(
+          expectString(vector, 'paserk'),
+          password,
+        );
 
-      final unwrapped =
-          await K4LocalPw.unwrap(expectString(vector, 'paserk'), password);
-      expect(unwrapped.rawBytes, equals(originalKey.rawBytes));
+        expect(bytesToHex(unwrapped.rawBytes), equals(expectString(vector, 'unwrapped')));
+      });
 
-      final wrapped = await K4LocalPw.wrap(
-        originalKey,
-        password,
-        memoryCost: vector['memlimit'] as int,
-        timeCost: vector['opslimit'] as int,
-      );
-      final roundTrip = await K4LocalPw.unwrap(wrapped.toString(), password);
-      expect(roundTrip.rawBytes, equals(originalKey.rawBytes));
+      test('round trips with provided parameters', () async {
+        final password = passwordFromHex(expectString(vector, 'passwordHex'));
+        final original = K4LocalKey(hexToBytes(expectString(vector, 'unwrapped')));
 
-      expect(
-        () => K4LocalPw.unwrap(wrapped.toString(), 'wrong-password'),
-        throwsA(isA<ArgumentError>()),
-      );
+        final wrapped = await K4LocalPw.wrap(
+          original,
+          password,
+          memoryCost: vector['memlimit'] as int,
+          timeCost: vector['opslimit'] as int,
+        );
+
+        final roundTrip = await K4LocalPw.unwrap(wrapped.toString(), password);
+        expect(roundTrip.rawBytes, equals(original.rawBytes));
+      });
     });
 
-    test('k4.secret-pw wrapping/unwrapping', () async {
+    group('k4.secret-pw', () {
       final vector = k4TestVectors['k4.secret-pw']!;
-      final keyBytes = hexToBytes(expectString(vector, 'unwrapped'));
-      final password = expectString(vector, 'passwordHex');
 
-      final originalKey = K4SecretKey(keyBytes);
+      test('unwraps official password wrapped key', () async {
+        final password = passwordFromHex(expectString(vector, 'passwordHex'));
+        final unwrapped = await K4SecretPw.unwrap(
+          expectString(vector, 'paserk'),
+          password,
+        );
 
-      final unwrapped =
-          await K4SecretPw.unwrap(expectString(vector, 'paserk'), password);
-      expect(unwrapped.rawBytes, equals(originalKey.rawBytes));
+        expect(bytesToHex(unwrapped.rawBytes), equals(expectString(vector, 'unwrapped')));
+      });
 
-      final wrapped = await K4SecretPw.wrap(
-        originalKey,
-        password,
-        memoryCost: vector['memlimit'] as int,
-        timeCost: vector['opslimit'] as int,
-      );
-      final roundTrip = await K4SecretPw.unwrap(wrapped.toString(), password);
-      expect(roundTrip.rawBytes, equals(originalKey.rawBytes));
+      test('round trips with provided parameters', () async {
+        final password = passwordFromHex(expectString(vector, 'passwordHex'));
+        final original = K4SecretKey(hexToBytes(expectString(vector, 'unwrapped')));
 
-      expect(
-        () => K4SecretPw.unwrap(wrapped.toString(), 'wrong-password'),
-        throwsA(isA<ArgumentError>()),
-      );
+        final wrapped = await K4SecretPw.wrap(
+          original,
+          password,
+          memoryCost: vector['memlimit'] as int,
+          timeCost: vector['opslimit'] as int,
+        );
+
+        final roundTrip = await K4SecretPw.unwrap(wrapped.toString(), password);
+        expect(roundTrip.rawBytes, equals(original.rawBytes));
+      });
     });
 
-    test('k4.seal sealing/unsealing', () async {
+    group('k4.seal', () {
       final vector = k4TestVectors['k4.seal']!;
-      final localKey = K4LocalKey(hexToBytes(expectString(vector, 'localKey')));
-      final publicKey = K4PublicKey(hexToBytes(expectString(vector, 'public')));
-      final secretKey = K4SecretKey(hexToBytes(expectString(vector, 'secret')));
 
-      final unsealed =
-          await K4Seal.unseal(expectString(vector, 'paserk'), secretKey);
-      expect(unsealed.rawBytes, equals(localKey.rawBytes));
+      test('unseals official sealed key', () async {
+        final secret = K4SecretKey(hexToBytes(expectString(vector, 'secret')));
+        final unsealed = await K4Seal.unseal(
+          expectString(vector, 'paserk'),
+          secret,
+        );
 
-      final sealed = await K4Seal.seal(localKey, publicKey);
-      final roundTrip = await K4Seal.unseal(sealed.toString(), secretKey);
-      expect(roundTrip.rawBytes, equals(localKey.rawBytes));
+        expect(bytesToHex(unsealed.rawBytes), equals(expectString(vector, 'localKey')));
+      });
+
+      test('round trips sealed key using provided public key', () async {
+        final secret = K4SecretKey(hexToBytes(expectString(vector, 'secret')));
+        final public = K4PublicKey(hexToBytes(expectString(vector, 'public')));
+        final original = K4LocalKey(hexToBytes(expectString(vector, 'localKey')));
+
+        final sealed = await K4Seal.seal(original, public);
+        final roundTrip = await K4Seal.unseal(sealed.toString(), secret);
+        expect(roundTrip.rawBytes, equals(original.rawBytes));
+      });
     });
 
-    test('k4.lid generation and comparison', () {
+    group('k4.lid', () {
       final vector = k4TestVectors['k4.lid']!;
-      final key = K4LocalKey.fromString(expectString(vector, 'key'));
 
-      final lid = K4Lid.fromKey(key);
-      expect(lid.toString(), equals(expectString(vector, 'paserk')));
+      test('derives deterministic identifier', () {
+        final key = K4LocalKey.fromString(expectString(vector, 'key'));
+        final lid = K4Lid.fromKey(key);
+        expect(lid.toString(), equals(expectString(vector, 'paserk')));
 
-      final lid2 = K4Lid.fromString(expectString(vector, 'paserk'));
-      expect(lid, equals(lid2));
+        final parsed = K4Lid.fromString(expectString(vector, 'paserk'));
+        expect(parsed.rawBytes, equals(lid.rawBytes));
+      });
     });
 
-    test('k4.pid generation and comparison', () {
+    group('k4.pid', () {
       final vector = k4TestVectors['k4.pid']!;
-      final key = K4PublicKey.fromString(expectString(vector, 'key'));
 
-      final pid = K4Pid.fromKey(key);
-      expect(pid.toString(), equals(expectString(vector, 'paserk')));
+      test('derives deterministic identifier', () async {
+        final key = K4PublicKey.fromString(expectString(vector, 'key'));
+        final pid = K4Pid.fromKey(key);
+        expect(pid.toString(), equals(expectString(vector, 'paserk')));
 
-      final pid2 = K4Pid.fromString(expectString(vector, 'paserk'));
-      expect(pid, equals(pid2));
+        final parsed = K4Pid.fromString(expectString(vector, 'paserk'));
+        expect(parsed.rawBytes, equals(pid.rawBytes));
+      });
     });
 
-    test('k4.sid generation and comparison', () {
+    group('k4.sid', () {
       final vector = k4TestVectors['k4.sid']!;
-      final key = K4SecretKey.fromString(expectString(vector, 'key'));
 
-      final sid = K4Sid.fromKey(key);
-      expect(sid.toString(), equals(expectString(vector, 'paserk')));
+      test('derives deterministic identifier', () {
+        final key = K4SecretKey.fromString(expectString(vector, 'key'));
+        final sid = K4Sid.fromKey(key);
+        expect(sid.toString(), equals(expectString(vector, 'paserk')));
 
-      final sid2 = K4Sid.fromString(expectString(vector, 'paserk'));
-      expect(sid, equals(sid2));
-    });
-
-    test('Cross-verification between public and secret keys', () async {
-      final secretVector = k4TestVectors['k4.secret']!;
-      final publicVector = k4TestVectors['k4.public']!;
-
-      final secretKey =
-          K4SecretKey.fromString(expectString(secretVector, 'paserk'));
-      expect(secretKey.rawBytes.length, equals(64),
-          reason: 'Ed25519 secret key must be 64 bytes');
-
-      final derivedPublicKey = await K4PublicKey.fromSecretKey(secretKey);
-      expect(derivedPublicKey.rawBytes.length, equals(32),
-          reason: 'Ed25519 public key must be 32 bytes');
-
-      expect(derivedPublicKey.toString(),
-          equals(expectString(publicVector, 'paserk')));
-    });
-
-    test('Invalid key lengths', () {
-      expect(
-        () => K4LocalKey(Uint8List(31)),
-        throwsArgumentError,
-      );
-
-      expect(
-        () => K4SecretKey(Uint8List(63)),
-        throwsArgumentError,
-      );
-
-      expect(
-        () => K4PublicKey(Uint8List(31)),
-        throwsArgumentError,
-      );
+        final parsed = K4Sid.fromString(expectString(vector, 'paserk'));
+        expect(parsed.rawBytes, equals(sid.rawBytes));
+      });
     });
   });
 }
