@@ -65,6 +65,80 @@ class Vectors {
   }
 }
 
+class PaserkVectors {
+  final String name;
+  final List<PaserkVector> tests;
+
+  PaserkVectors({
+    required this.name,
+    required this.tests,
+  });
+
+  Iterable<PaserkVector> byType(String type) {
+    return tests.where((vector) => vector.type == type);
+  }
+
+  factory PaserkVectors.fromJsonFile(String filePath) {
+    final file = File(filePath);
+    final fileContent = file.readAsStringSync();
+
+    final json = jsonDecode(fileContent) as Map<String, dynamic>;
+    final name = json['name'] as String;
+    final testsJson = json['tests'] as List<dynamic>;
+
+    final tests = testsJson
+        .map((testJson) => PaserkVector.fromJson(testJson as Map<String, dynamic>))
+        .toList(growable: false);
+
+    return PaserkVectors(name: name, tests: tests);
+  }
+
+  static PaserkVectors loadK4() {
+    return PaserkVectors.fromJsonFile('test/vectors/paserk/k4.json');
+  }
+}
+
+final class PaserkVector {
+  final String type;
+  final String name;
+  final Map<String, dynamic> data;
+
+  PaserkVector({
+    required this.type,
+    required this.name,
+    required this.data,
+  });
+
+  factory PaserkVector.fromJson(Map<String, dynamic> json) {
+    final type = json['type'];
+    final name = json['name'];
+
+    if (type is! String || type.isEmpty) {
+      throw ArgumentError.value(type, 'type', 'Expected non-empty string');
+    }
+
+    if (name is! String || name.isEmpty) {
+      throw ArgumentError.value(name, 'name', 'Expected non-empty string');
+    }
+
+    final data = Map<String, dynamic>.from(json)
+      ..remove('type')
+      ..remove('name');
+
+    return PaserkVector(type: type, name: name, data: data);
+  }
+
+  T require<T>(String key) {
+    final value = data[key];
+    if (value is! T) {
+      throw StateError('Expected "$key" to be a ${T.toString()} in $name');
+    }
+    return value;
+  }
+
+  String requireString(String key) => require<String>(key);
+}
+
 /// Класс для тестового вектора типа local
 final class LocalVector {
   final String key;
