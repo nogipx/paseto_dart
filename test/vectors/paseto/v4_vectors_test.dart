@@ -23,7 +23,8 @@ void main() {
           );
 
           if (vector.payloadBytes != null) {
-            expect(utf8.decode(message.package.content), equals(vector.payload));
+            expect(
+                utf8.decode(message.package.content), equals(vector.payload));
           }
 
           final expectedFooter = vector.footerBytes;
@@ -65,7 +66,8 @@ void main() {
           );
 
           if (vector.payloadBytes != null) {
-            expect(utf8.decode(message.package.content), equals(vector.payload));
+            expect(
+                utf8.decode(message.package.content), equals(vector.payload));
           }
 
           final expectedFooter = vector.footerBytes;

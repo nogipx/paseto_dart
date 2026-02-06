@@ -1,15 +1,12 @@
 #!/usr/bin/env just --justfile
 
-test:
-    fvm dart test
-
 pubget:
-    fvm dart pub global run packo pubget -r
+    fvm dart pub get
 
 prepare:
+    fvm dart analyze
     fvm dart format -l 80 .
     reuse annotate -c "Karim \"nogipx\" Mamatkazin <nogipx@gmail.com>" -l "MIT" --skip-unrecognised -r lib
-    fvm dart test --coverage=coverage
 
 coverage:
     fvm dart test --coverage=coverage

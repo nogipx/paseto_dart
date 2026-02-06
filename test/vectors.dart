@@ -288,8 +288,7 @@ final class PublicVector {
       footer: json['footer'] as String? ?? '',
       implicitAssertion: json['implicit-assertion'] as String? ?? '',
       publicKey: json['public-key'] as String?,
-      secretKey:
-          (json['secret-key'] as String?) ?? (json['key'] as String?),
+      secretKey: (json['secret-key'] as String?) ?? (json['key'] as String?),
       secretKeySeed: json['secret-key-seed'] as String?,
       secretKeyPem: json['secret-key-pem'] as String?,
       publicKeyPem: json['public-key-pem'] as String?,

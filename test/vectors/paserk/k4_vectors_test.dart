@@ -1,14 +1,4 @@
-import 'package:paseto_dart/paserk/k4_lid.dart';
-import 'package:paseto_dart/paserk/k4_local.dart';
-import 'package:paseto_dart/paserk/k4_local_pw.dart';
-import 'package:paseto_dart/paserk/k4_local_wrap.dart';
-import 'package:paseto_dart/paserk/k4_pid.dart';
-import 'package:paseto_dart/paserk/k4_public.dart';
-import 'package:paseto_dart/paserk/k4_seal.dart';
-import 'package:paseto_dart/paserk/k4_secret.dart';
-import 'package:paseto_dart/paserk/k4_secret_pw.dart';
-import 'package:paseto_dart/paserk/k4_secret_wrap.dart';
-import 'package:paseto_dart/paserk/k4_sid.dart';
+import 'package:paseto_dart/paseto_dart.dart';
 import 'package:test/test.dart';
 
 import '../../vectors.dart';

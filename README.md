@@ -52,7 +52,58 @@ void main() {
 }
 ```
 
-Additional PASERK examples (PIE wraps, password-based transformations, and `k4.seal`) are available in `test/paserk`.
+Additional PASERK examples (PIE wraps, password-based transformations, and `k4.seal`) are available in `test/paserk`. A high-level facade is also available:
+
+```dart
+import 'package:paseto_dart/paseto_dart.dart';
+
+void main() async {
+  // Generate keys
+  final local = Paseto.generateSymmetricKey();
+  final pair = await Paseto.generateKeyPair();
+
+  // Encrypt/decrypt local token
+  final token = await Paseto.encryptLocal(
+    payload: {'msg': 'hi'},
+    key: local,
+    implicitAssertion: 'ia',
+  );
+  final data = await Paseto.decryptLocal(
+    token: token,
+    key: local,
+    implicitAssertion: 'ia',
+  );
+
+  // Sign/verify public token
+  final pubToken = await Paseto.signPublicToken(
+    payload: {'sub': 'user1'},
+    keyPair: pair,
+    implicitAssertion: 'ia',
+  );
+  final verified = await Paseto.verifyPublicToken(
+    token: pubToken,
+    publicKey: pair.publicKey,
+    implicitAssertion: 'ia',
+  );
+
+  // Seal a symmetric key for a recipient
+  final sealed = await Paseto.symmetricKeyToPaserkSeal(
+    key: local,
+    publicKey: pair.publicKey,
+  );
+  final restored = await Paseto.symmetricKeyFromPaserkSeal(
+    paserk: sealed,
+    keyPair: pair,
+  );
+
+  // Cleanup
+  local.dispose();
+  restored.dispose();
+  pair.dispose();
+  print(data);
+  print(verified);
+}
+```
 
 ## Getting Started
 
